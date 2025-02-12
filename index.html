@@ -40,19 +40,6 @@
             50% { transform: scale(0.975); }
         }
 
-        @keyframes boxBreathing {
-            0%, 100% { transform: scale(1); }
-            25% { transform: scale(0.985); }
-            50% { transform: scale(0.985); }
-            75% { transform: scale(1); }
-        }
-
-        @keyframes relaxBreathing {
-            0%, 100% { transform: scale(1); }
-            30% { transform: scale(0.982); }
-            70% { transform: scale(0.982); }
-        }
-
         .content-wrapper {
             position: absolute;
             top: 15.625%;
@@ -121,14 +108,14 @@
                 <div class="mouth-container">
                     <svg width="100%" height="100%" viewBox="0 0 516 54" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path id="smile-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
-                        <path id="speak-path" d="M2 27H514" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round" opacity="0"/>
+                        <path id="speak-path" d="M2 27 C172 27 258 27 344 27 514 27" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round" opacity="0"/>
                     </svg>
                 </div>
             </div>
         </div>
     </div>
 
-    <audio id="meditation-audio" loop>
+    <audio id="meditation-audio" preload="auto">
         <source src="10-Minute Guided Meditation_ Self-Love  SELF (mp3cut.net).mp3" type="audio/mp3">
     </audio>
 
@@ -144,88 +131,39 @@
         let audioContext = null;
         let analyser = null;
         let isDeepBreathing = false;
-
-        // Breathing patterns
-        const breathingPatterns = {
-            normal: {
-                animation: 'normalBreathing 5s ease-in-out infinite',
-                duration: 5000
-            },
-            deep: {
-                animation: 'deepBreathing 8s ease-in-out infinite',
-                duration: 8000
-            },
-            box: {
-                animation: 'boxBreathing 16s linear',
-                duration: 16000
-            },
-            relax: {
-                animation: 'relaxBreathing 12s ease-in-out',
-                duration: 12000
-            }
-        };
-
-        function changeBreathingPattern(pattern, duration) {
-            frame.style.animation = 'none';
-            frame.offsetHeight; // Trigger reflow
-            frame.style.animation = pattern;
-            
-            if (duration) {
-                setTimeout(() => {
-                    frame.style.animation = breathingPatterns.normal.animation;
-                    isDeepBreathing = false;
-                }, duration);
-            }
-        }
-
-        function setupAudioContext() {
-            if (!audioContext) {
+        
+        // Initialize audio context on user interaction
+        async function initAudio() {
+            try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
                 const source = audioContext.createMediaElementSource(audio);
+                
+                analyser.fftSize = 32;
                 source.connect(analyser);
                 analyser.connect(audioContext.destination);
-                analyser.fftSize = 32;
+                
+                return true;
+            } catch (error) {
+                console.error('Audio initialization error:', error);
+                return false;
             }
         }
 
         function updateSpeakingAnimation(intensity) {
-            const baseY = 27;  // Center line position
-            const maxMovement = 20;  // Maximum movement range
-            
-            // Create natural speaking motion focused in the middle
-            const time = Date.now() / 150;  // Speed of movement
+            const baseY = 27;
+            const maxMovement = 20;
+            const time = Date.now() / 150;
             const movement = Math.sin(time) * maxMovement * intensity;
             
-            // Keep ends fixed, move middle
             const path = `M2 ${baseY} ` +
-                        `C172 ${baseY} ` +  // First control point stays level
-                        `258 ${baseY + movement} ` +  // Middle point moves up/down
-                        `344 ${baseY} ` +  // Third control point stays level
-                        `514 ${baseY}`;    // End point
+                        `C172 ${baseY} ` +
+                        `258 ${baseY + movement} ` +
+                        `344 ${baseY} ` +
+                        `514 ${baseY}`;
             
             speakPath.setAttribute('d', path);
         }
-
-        // Left eye click handler - Toggle meditation with smoother transitions
-        leftEye.addEventListener('click', () => {
-            if (!isMediating) {
-                setupAudioContext();
-                // Start with line in center position
-                speakPath.setAttribute('d', 'M2 27 C172 27 258 27 344 27 514 27');
-                smilePath.style.opacity = '0';
-                speakPath.style.opacity = '1';
-                audio.play();
-                isMediating = true;
-                startAudioVisualization();
-            } else {
-                audio.pause();
-                audio.currentTime = 0;
-                isMediating = false;
-                smilePath.style.opacity = '1';
-                speakPath.style.opacity = '0';
-            }
-        });
 
         function startAudioVisualization() {
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
@@ -244,15 +182,37 @@
             animate();
         }
 
-        // Left eye click handler - Toggle meditation
-        leftEye.addEventListener('click', () => {
+        // Left eye click handler - Toggle meditation with proper audio initialization
+        leftEye.addEventListener('click', async () => {
             if (!isMediating) {
-                setupAudioContext();
-                smilePath.style.opacity = '0';
-                speakPath.style.opacity = '1';
-                audio.play();
-                isMediating = true;
-                startAudioVisualization();
+                // Initialize audio if not already done
+                if (!audioContext) {
+                    const initialized = await initAudio();
+                    if (!initialized) {
+                        console.error('Failed to initialize audio');
+                        return;
+                    }
+                }
+                
+                try {
+                    // Resume AudioContext if it was suspended
+                    if (audioContext.state === 'suspended') {
+                        await audioContext.resume();
+                    }
+                    
+                    // Ensure audio is ready to play
+                    await audio.play();
+                    
+                    smilePath.style.opacity = '0';
+                    speakPath.style.opacity = '1';
+                    isMediating = true;
+                    startAudioVisualization();
+                } catch (error) {
+                    console.error('Audio playback error:', error);
+                    isMediating = false;
+                    smilePath.style.opacity = '1';
+                    speakPath.style.opacity = '0';
+                }
             } else {
                 audio.pause();
                 audio.currentTime = 0;
@@ -262,15 +222,22 @@
             }
         });
 
-        // Right eye click handler - Trigger deep breathing
+        // Right eye click handler - Deep breathing
         rightEye.addEventListener('click', () => {
             if (!isDeepBreathing) {
                 isDeepBreathing = true;
-                changeBreathingPattern(breathingPatterns.deep.animation, 90000); // 1.5 minutes
+                frame.style.animation = 'none';
+                frame.offsetHeight;
+                frame.style.animation = 'deepBreathing 8s ease-in-out infinite';
+                
+                setTimeout(() => {
+                    frame.style.animation = 'normalBreathing 5s ease-in-out infinite';
+                    isDeepBreathing = false;
+                }, 90000); // 1.5 minutes
             }
         });
 
-        // Blinking logic
+        // Blinking functionality
         const blinkTypes = {
             quick: { duration: 200, class: 'blink' },
             slow: { duration: 300, class: 'blink slow-blink' },
@@ -332,8 +299,11 @@
             setTimeout(blink, nextBlinkDelay);
         }
 
-        // Start animations
+        // Start blinking animation
         setTimeout(blink, Math.random() * 5000 + 3000);
+
+        // Preload audio
+        audio.load();
     </script>
 </body>
 </html>
