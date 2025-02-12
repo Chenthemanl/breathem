@@ -117,7 +117,7 @@
         let audioContext = null;
         let currentMouthTimeout = null;
 
-        // Blinking logic from previous version
+        // Blinking logic
         const blinkTypes = {
             quick: { duration: 200, class: 'blink' },
             slow: { duration: 300, class: 'blink slow-blink' },
@@ -172,8 +172,8 @@
 
         function setMouthCurve(intensity = 0) {
             const baseHeight = 2;
-            const height = baseHeight + intensity;
-            const controlHeight = Math.max(52, 52 + intensity/2);
+            const height = baseHeight + intensity * 2; // Doubled intensity effect
+            const controlHeight = Math.max(52, 52 + intensity * 3); // Tripled control point movement
             mouthPath.setAttribute("d", `M2 ${baseHeight}C138.333 ${controlHeight} 377.667 ${controlHeight} 514 ${baseHeight}`);
         }
 
@@ -236,7 +236,7 @@
                 
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                const targetIntensity = avg > 10 ? Math.min(avg / 4, 20) : 0;
+                const targetIntensity = avg > 10 ? Math.min(avg / 2, 30) : 0; // Increased range and sensitivity
                 
                 if (Math.abs(targetIntensity - lastIntensity) > 0.5) {
                     smoothTransition(lastIntensity, targetIntensity);
