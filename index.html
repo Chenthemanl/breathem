@@ -97,7 +97,7 @@
                 </div>
                 <div class="mouth-container">
                     <svg id="mouth" width="100%" height="100%" viewBox="0 0 516 54" fill="none">
-                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                        <path id="mouth-path" d="M2 27C138.333 27 377.667 27 514 27" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
@@ -171,9 +171,8 @@
         }
 
         function setMouthCurve(intensity = 0) {
-            const baseHeight = 2;
-            const height = baseHeight + intensity * 2; // Doubled intensity effect
-            const controlHeight = Math.max(52, 52 + intensity * 3); // Tripled control point movement
+            const baseHeight = 27;
+            const controlHeight = baseHeight + (intensity * 5);
             mouthPath.setAttribute("d", `M2 ${baseHeight}C138.333 ${controlHeight} 377.667 ${controlHeight} 514 ${baseHeight}`);
         }
 
@@ -236,9 +235,9 @@
                 
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                const targetIntensity = avg > 10 ? Math.min(avg / 2, 40) : 0; // Increased range and sensitivity
+                const targetIntensity = avg > 5 ? Math.min(avg, 50) : 0;
                 
-                if (Math.abs(targetIntensity - lastIntensity) > 0.5) {
+                if (Math.abs(targetIntensity - lastIntensity) > 0.1) {
                     smoothTransition(lastIntensity, targetIntensity);
                     lastIntensity = targetIntensity;
                 }
