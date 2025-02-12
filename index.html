@@ -138,13 +138,13 @@
         function updateSpeakingAnimation(intensity) {
             // Get the middle y-position and calculate movement
             const centerY = 27;
-            const maxMovement = 15; // Increased for more visible movement
-            const time = Date.now() / 80; // Faster oscillation
+            const maxMovement = 18; // Increased for more visible movement
+            const time = Date.now() / 90; // Faster oscillation
             const movement = Math.sin(time) * maxMovement * intensity;
 
             // Define the segments of the line
             const midPoint = 258; // Center point
-            const controlRange = 100; // Width of the moving segment
+            const controlRange = 180; // Width of the moving segment
 
             // Create a more pronounced movement in the center
             const pathData = [
