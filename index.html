@@ -150,16 +150,16 @@
             const otherEnergy = otherRange.reduce((a, b) => a + b, 0) / otherRange.length;
             
             // Speech tends to have more energy in lower frequencies
-            const isSpeech = speechEnergy > otherEnergy * 1.5 && speechEnergy > 40;
+            const isSpeech = speechEnergy > otherEnergy * 1.2 && speechEnergy > 30;
             
             return isSpeech ? speechEnergy / 128 : 0;
         }
 
         function updateMouthShape(intensity) {
             const centerY = 27;
-            const maxMovement = 18; // Increased for more visible movement
+            const maxMovement = 25; // Increased for more visible movement
             const midPoint = 258;
-            const controlRange = 180; // Wider moving segment
+            const controlRange = 150; // Wider moving segment
             
             if (intensity > 0.1) {
                 const movement = maxMovement * intensity;
