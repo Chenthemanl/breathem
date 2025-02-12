@@ -203,7 +203,7 @@
             await executeBlink(selectedType);
             
             const minDelay = 9000;
-            const maxDelay = 203000;
+            const maxDelay = 20000;
             const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
             
             setTimeout(blink, nextBlinkDelay);
