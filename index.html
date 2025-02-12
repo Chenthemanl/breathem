@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Interactive Mindful Face</title>
+    <title>Interactive Mindfkul Face</title>
     <style>
         body {
             display: flex;
@@ -85,7 +85,6 @@
         .mouth-container {
             width: 57.27%;
             height: auto;
-            transition: all 0.3s ease;
         }
 
         .blink {
@@ -98,6 +97,10 @@
 
         .very-slow-blink {
             transition: height 0.5s;
+        }
+
+        path {
+            transition: opacity 0.3s ease;
         }
 
         @media (max-width: 768px) {
@@ -117,7 +120,8 @@
                 </div>
                 <div class="mouth-container">
                     <svg width="100%" height="100%" viewBox="0 0 516 54" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                        <path id="smile-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                        <path id="speak-path" d="M2 27H514" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round" opacity="0"/>
                     </svg>
                 </div>
             </div>
@@ -132,7 +136,8 @@
         const frame = document.getElementById('breathing-frame');
         const leftEye = document.getElementById('left-eye');
         const rightEye = document.getElementById('right-eye');
-        const mouthPath = document.getElementById('mouth-path');
+        const smilePath = document.getElementById('smile-path');
+        const speakPath = document.getElementById('speak-path');
         const audio = document.getElementById('meditation-audio');
         
         let isMediating = false;
@@ -173,18 +178,6 @@
             }
         }
 
-        // Audio visualization setup
-        // Audio sensitivity configuration
-        const audioConfig = {
-            fftSize: 64,           // Frequency detail (32-2048, power of 2)
-            smoothingTimeConstant: 0.8,  // Smoothing (0-1)
-            minDecibels: -70,      // Minimum dB to detect
-            maxDecibels: -30,      // Maximum dB to detect
-            baseHeight: 2,         // Minimum mouth curve
-            maxHeight: 10,         // Maximum mouth movement
-            sensitivityMultiplier: 0.7   // Overall sensitivity (0-1)
-        };
-
         function setupAudioContext() {
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -192,41 +185,23 @@
                 const source = audioContext.createMediaElementSource(audio);
                 source.connect(analyser);
                 analyser.connect(audioContext.destination);
-                
-                // Apply audio analysis configuration
-                analyser.fftSize = audioConfig.fftSize;
-                analyser.smoothingTimeConstant = audioConfig.smoothingTimeConstant;
-                analyser.minDecibels = audioConfig.minDecibels;
-                analyser.maxDecibels = audioConfig.maxDecibels;
+                analyser.fftSize = 32;
             }
         }
 
-        // Improved mouth animation for more natural movement
-        function updateMouthShape(intensity) {
-            // Apply sensitivity multiplier and smooth the intensity
-            const smoothedIntensity = intensity * audioConfig.sensitivityMultiplier;
+        function updateSpeakingAnimation(intensity) {
+            const baseY = 27;  // Center position
+            const maxDeviation = 15;  // Maximum movement up/down
+            const movement = Math.sin(Date.now() / 100) * maxDeviation * intensity;
             
-            // Calculate mouth curve parameters
-            const height = audioConfig.baseHeight + (smoothedIntensity * audioConfig.maxHeight);
-            const controlY = 52 - height;
+            // Create wave-like motion
+            const path = `M2 ${baseY} ` +
+                        `C128 ${baseY + movement} ` +
+                        `258 ${baseY - movement} ` +
+                        `388 ${baseY + movement} ` +
+                        `514 ${baseY}`;
             
-            // Create bezier curve with multiple control points for more natural shape
-            const leftControl = 138.333;
-            const rightControl = 377.667;
-            const middleControl = (leftControl + rightControl) / 2;
-            
-            // Adjust curve tension based on intensity
-            const tension = Math.min(1 + smoothedIntensity, 1.5);
-            const midHeight = controlY * tension;
-            
-            // Create more natural curve with multiple control points
-            const path = `M2 ${audioConfig.baseHeight} ` +
-                        `C${leftControl} ${controlY} ` +
-                        `${middleControl} ${midHeight} ` +
-                        `${rightControl} ${controlY} ` +
-                        `514 ${audioConfig.baseHeight}`;
-            
-            mouthPath.setAttribute('d', path);
+            speakPath.setAttribute('d', path);
         }
 
         function startAudioVisualization() {
@@ -239,41 +214,28 @@
                 const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
                 const normalizedIntensity = Math.min(average / 128, 1);
                 
-                updateMouthShape(normalizedIntensity);
+                updateSpeakingAnimation(normalizedIntensity);
                 requestAnimationFrame(animate);
             }
             
             animate();
         }
 
-        // Initialize mouth in neutral position
-        function setNeutralMouth() {
-            mouthPath.setAttribute('d', 'M2 27C138.333 27 377.667 27 514 27');
-        }
-
-        // Set initial neutral state
-        setNeutralMouth();
-
-        // Left eye click handler - Toggle meditation with smooth transitions
+        // Left eye click handler - Toggle meditation
         leftEye.addEventListener('click', () => {
             if (!isMediating) {
-                // Start from neutral position
-                setNeutralMouth();
-                
-                // Small delay before starting audio
-                setTimeout(() => {
-                    setupAudioContext();
-                    audio.play();
-                    isMediating = true;
-                    startAudioVisualization();
-                }, 300);
+                setupAudioContext();
+                smilePath.style.opacity = '0';
+                speakPath.style.opacity = '1';
+                audio.play();
+                isMediating = true;
+                startAudioVisualization();
             } else {
                 audio.pause();
                 audio.currentTime = 0;
                 isMediating = false;
-                
-                // Smooth transition back to smile
-                mouthPath.setAttribute('d', 'M2 2C138.333 52 377.667 52 514 2');
+                smilePath.style.opacity = '1';
+                speakPath.style.opacity = '0';
             }
         });
 
@@ -285,7 +247,7 @@
             }
         });
 
-        // Original blinking and contemplative states logic
+        // Blinking logic
         const blinkTypes = {
             quick: { duration: 200, class: 'blink' },
             slow: { duration: 300, class: 'blink slow-blink' },
