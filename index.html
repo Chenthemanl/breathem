@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Meditative Face</title>
+    <style>
+        /* Base styles remain the same */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #FFFFFF;
+            padding: 20px;
+        }
+
+        .frame-container {
+            width: 100%;
+            max-width: 901px;
+            margin: auto;
+        }
+
+        .frame {
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.827%;
+            border: 2px solid #8F8F8F;
+            border-radius: calc(29 * 100vw / 901);
+            position: relative;
+            background-color: #FFFFFF;
+            animation: normalBreathing 5s ease-in-out infinite;
+        }
+
+        @keyframes normalBreathing {
+            0%, 100% { 
+                transform: scale(1);
+            }
+            50% { 
+                transform: scale(0.985); 
+            }
+        }
+
+        @keyframes deepBreathing {
+            0%, 100% { 
+                transform: scale(1);
+            }
+            50% { 
+                transform: scale(0.975); 
+            }
+        }
+
+        .deep-breath {
+            animation: deepBreathing 8s ease-in-out;
+        }
+
+        .content-wrapper {
+            position: absolute;
+            top: 15.625%;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .eyes-container {
+            display: flex;
+            justify-content: space-between;
+            width: 38.957%;
+            margin-bottom: 6.25%;
+        }
+
+        .eye {
+            width: calc(35 * 100vw / 901);
+            height: calc(34 * 100vw / 901);
+            max-width: 35px;
+            max-height: 34px;
+            background-color: #8F8F8F;
+            border-radius: 50%;
+            transition: height 0.1s;
+            flex-shrink: 0;
+        }
+
+        .mouth-container {
+            width: 57.27%;
+            height: auto;
+        }
+
+        .blink {
+            height: 2px !important;
+        }
+
+        .slow-blink {
+            transition: height 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="frame-container">
+        <div class="frame">
+            <div class="content-wrapper">
+                <div class="eyes-container">
+                    <div class="eye"></div>
+                    <div class="eye"></div>
+                </div>
+                <div class="mouth-container">
+                    <svg width="100%" height="100%" viewBox="0 0 516 54" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const frame = document.querySelector('.frame');
+        const eyes = document.querySelectorAll('.eye');
+        
+        // Breathing patterns
+        function takeDeepBreath() {
+            frame.style.animation = 'none';
+            frame.offsetHeight; // Trigger reflow
+            frame.style.animation = 'deepBreathing 8s ease-in-out';
+            
+            setTimeout(() => {
+                frame.style.animation = 'normalBreathing 5s ease-in-out infinite';
+            }, 8000);
+        }
+
+        function scheduleDeepBreaths() {
+            const minDelay = 30000; // 30 seconds
+            const maxDelay = 90000; // 90 seconds
+            const nextDeepBreath = Math.random() * (maxDelay - minDelay) + minDelay;
+            
+            setTimeout(() => {
+                takeDeepBreath();
+                scheduleDeepBreaths();
+            }, nextDeepBreath);
+        }
+
+        // Blinking logic
+        const blinkTypes = {
+            quick: {
+                duration: 200,
+                class: 'blink'
+            },
+            slow: {
+                duration: 400,
+                class: 'blink slow-blink'
+            },
+            double: {
+                duration: 200,
+                interval: 150,
+                class: 'blink'
+            }
+        };
+
+        function executeBlink(type) {
+            return new Promise((resolve) => {
+                switch(type) {
+                    case 'double':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
+                            setTimeout(() => {
+                                eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
+                                setTimeout(() => {
+                                    eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
+                                    resolve();
+                                }, blinkTypes.double.duration);
+                            }, blinkTypes.double.interval);
+                        }, blinkTypes.double.duration);
+                        break;
+                    
+                    case 'slow':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.slow.class));
+                            resolve();
+                        }, blinkTypes.slow.duration);
+                        break;
+                    
+                    default:
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.quick.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.quick.class));
+                            resolve();
+                        }, blinkTypes.quick.duration);
+                }
+            });
+        }
+
+        async function blink() {
+            const types = ['quick', 'quick', 'quick', 'slow', 'double'];
+            const selectedType = types[Math.floor(Math.random() * types.length)];
+            
+            await executeBlink(selectedType);
+            
+            const minDelay = 9000;
+            const maxDelay = 203000;
+            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+            
+            setTimeout(blink, nextBlinkDelay);
+        }
+
+        // Start animations
+        setTimeout(blink, Math.random() * 5000 + 3000);
+        scheduleDeepBreaths();
+    </script>
+</body>
+</html>
