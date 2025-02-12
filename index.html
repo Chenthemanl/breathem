@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mindful Face</title>
+    <title>Mindful</title>
     <style>
         body {
             display: flex;
@@ -236,7 +236,7 @@
                 
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                const targetIntensity = avg > 10 ? Math.min(avg / 2, 30) : 0; // Increased range and sensitivity
+                const targetIntensity = avg > 10 ? Math.min(avg / 2, 40) : 0; // Increased range and sensitivity
                 
                 if (Math.abs(targetIntensity - lastIntensity) > 0.5) {
                     smoothTransition(lastIntensity, targetIntensity);
