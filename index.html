@@ -58,32 +58,16 @@
         }
 
         .eye {
-            width: calc(35 * 100vw / 901);
-            height: calc(34 * 100vw / 901);
-            max-width: 35px;
-            max-height: 34px;
+            width: 35px;
+            height: 34px;
             background-color: #8F8F8F;
             border-radius: 50%;
-            transition: height 0.1s;
-            flex-shrink: 0;
             cursor: pointer;
         }
 
         .mouth-container {
             width: 57.27%;
             height: auto;
-        }
-
-        .blink {
-            height: 2px !important;
-        }
-
-        .slow-blink {
-            transition: height 0.3s;
-        }
-
-        #mouth-path {
-            transition: d 0.3s ease;
         }
     </style>
 </head>
@@ -97,14 +81,14 @@
                 </div>
                 <div class="mouth-container">
                     <svg id="mouth" width="100%" height="100%" viewBox="0 0 516 54" fill="none">
-                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                        <path id="mouth-path" d="M2 27C138.333 27 377.667 27 514 27" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
         </div>
     </div>
 
-    <audio id="meditation-audio" src="10-Minute Guided Meditation_ Self-Love  SELF (mp3cut.net).mp3"></audio>
+    <audio id="meditation-audio" src="YOUR_AUDIO_LINK_HERE" crossorigin="anonymous"></audio>
 
     <script>
         const frame = document.getElementById("breathing-frame");
@@ -115,47 +99,6 @@
         let meditationActive = false;
         let deepBreathingActive = false;
         let audioContext = null;
-        let currentMouthTimeout = null;
-
-        // Blinking logic
-        const blinkTypes = {
-            quick: { duration: 200, class: 'blink' },
-            slow: { duration: 300, class: 'blink slow-blink' },
-        };
-
-        function executeBlink(type) {
-            return new Promise((resolve) => {
-                const eyes = document.querySelectorAll('.eye');
-                switch(type) {
-                    case 'slow':
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.slow.class));
-                            resolve();
-                        }, blinkTypes.slow.duration);
-                        break;
-                    default:
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.quick.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.quick.class));
-                            resolve();
-                        }, blinkTypes.quick.duration);
-                }
-            });
-        }
-
-        async function blink() {
-            const types = ['quick', 'quick', 'quick', 'slow'];
-            const selectedType = types[Math.floor(Math.random() * types.length)];
-            
-            await executeBlink(selectedType);
-            
-            const minDelay = 21000;
-            const maxDelay = 29000;
-            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
-            
-            setTimeout(blink, nextBlinkDelay);
-        }
 
         function changeBreathingPattern(animation, duration = 120000) {
             if (deepBreathingActive) return;
@@ -170,51 +113,11 @@
             }, duration);
         }
 
-        function setMouthCurve(intensity = 0) {
-            // Set default curve height and max movement
-            const baseControl = 52;  // Base curve control point
-            const maxMovement = 15;  // Maximum movement range
-            
-            // Calculate the new control point based on intensity
-            const newControl = Math.max(20, baseControl - (intensity * maxMovement));
-            
-            // Always keep endpoints at 2 for consistent small curve
-            mouthPath.setAttribute("d", `M2 2C138.333 ${newControl} 377.667 ${newControl} 514 2`);
-        }
-
-        function smoothTransition(currentValue, targetValue, duration = 300) {
-            const startValue = currentValue;
-            const startTime = performance.now();
-            
-            function update(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                // Easing function
-                const eased = progress < .5 ? 
-                    4 * progress * progress * progress : 
-                    1 - Math.pow(-2 * progress + 2, 3) / 2;
-                
-                const currentIntensity = startValue + (targetValue - startValue) * eased;
-                setMouthCurve(currentIntensity);
-                
-                if (progress < 1) {
-                    currentMouthTimeout = requestAnimationFrame(update);
-                }
-            }
-            
-            if (currentMouthTimeout) {
-                cancelAnimationFrame(currentMouthTimeout);
-            }
-            currentMouthTimeout = requestAnimationFrame(update);
-        }
-
         function toggleMeditation() {
             if (meditationActive) {
                 audio.pause();
                 audio.currentTime = 0;
-                // Return to default smile immediately
-                setMouthCurve(0);
+                mouthPath.setAttribute("d", "M2 27C138.333 27 377.667 27 514 27");
                 meditationActive = false;
                 if (audioContext) {
                     audioContext.close();
@@ -235,21 +138,14 @@
             analyser.connect(audioContext.destination);
             analyser.fftSize = 256;
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            let lastIntensity = 0;
 
             function updateMouth() {
                 if (!meditationActive) return;
-                
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                // Increased sensitivity and range
-                const targetIntensity = avg > 5 ? Math.min(avg / 10, 3) : 0;
-                
-                if (Math.abs(targetIntensity - lastIntensity) > 0.1) {
-                    smoothTransition(lastIntensity, targetIntensity);
-                    lastIntensity = targetIntensity;
-                }
-                
+                const intensity = Math.min(avg / 10, 10);
+                const newControl = 27 + intensity;
+                mouthPath.setAttribute("d", `M2 ${27 - intensity}C138.333 ${newControl} 377.667 ${newControl} 514 ${27 - intensity}`);
                 requestAnimationFrame(updateMouth);
             }
             updateMouth();
@@ -259,9 +155,6 @@
         rightEye.addEventListener("click", () => {
             changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
         });
-
-        // Start blinking
-        setTimeout(blink, Math.random() * 5000 + 3000);
     </script>
 </body>
 </html>
