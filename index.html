@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mindful Face</title>
+    <title>Interactive Mindful Face</title>
     <style>
-        /* Base styles remain the same */
         body {
             display: flex;
             justify-content: center;
@@ -32,21 +31,13 @@
         }
 
         @keyframes normalBreathing {
-            0%, 100% { 
-                transform: scale(1);
-            }
-            50% { 
-                transform: scale(0.98); 
-            }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.98); }
         }
 
         @keyframes deepBreathing {
-            0%, 100% { 
-                transform: scale(1);
-            }
-            50% { 
-                transform: scale(0.975); 
-            }
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.975); }
         }
 
         @keyframes boxBreathing {
@@ -60,18 +51,6 @@
             0%, 100% { transform: scale(1); }
             30% { transform: scale(0.982); }
             70% { transform: scale(0.982); }
-        }
-
-        .deep-breath {
-            animation: deepBreathing 8s ease-in-out;
-        }
-
-        .box-breath {
-            animation: boxBreathing 16s linear;
-        }
-
-        .relax-breath {
-            animation: relaxBreathing 12s ease-in-out;
         }
 
         .content-wrapper {
@@ -100,11 +79,13 @@
             border-radius: 50%;
             transition: height 0.1s;
             flex-shrink: 0;
+            cursor: pointer;
         }
 
         .mouth-container {
             width: 57.27%;
             height: auto;
+            transition: all 0.3s ease;
         }
 
         .blink {
@@ -128,25 +109,37 @@
 </head>
 <body>
     <div class="frame-container">
-        <div class="frame">
+        <div class="frame" id="breathing-frame">
             <div class="content-wrapper">
                 <div class="eyes-container">
-                    <div class="eye"></div>
-                    <div class="eye"></div>
+                    <div class="eye" id="left-eye"></div>
+                    <div class="eye" id="right-eye"></div>
                 </div>
                 <div class="mouth-container">
                     <svg width="100%" height="100%" viewBox="0 0 516 54" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
         </div>
     </div>
 
+    <audio id="meditation-audio" loop>
+        <source src="YOUR_MEDITATION_AUDIO.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
-        const frame = document.querySelector('.frame');
-        const eyes = document.querySelectorAll('.eye');
+        const frame = document.getElementById('breathing-frame');
+        const leftEye = document.getElementById('left-eye');
+        const rightEye = document.getElementById('right-eye');
+        const mouthPath = document.getElementById('mouth-path');
+        const audio = document.getElementById('meditation-audio');
         
+        let isMediating = false;
+        let audioContext = null;
+        let analyser = null;
+        let isDeepBreathing = false;
+
         // Breathing patterns
         const breathingPatterns = {
             normal: {
@@ -154,7 +147,7 @@
                 duration: 5000
             },
             deep: {
-                animation: 'deepBreathing 8s ease-in-out',
+                animation: 'deepBreathing 8s ease-in-out infinite',
                 duration: 8000
             },
             box: {
@@ -167,57 +160,93 @@
             }
         };
 
-        function changeBreathingPattern(pattern) {
+        function changeBreathingPattern(pattern, duration) {
             frame.style.animation = 'none';
             frame.offsetHeight; // Trigger reflow
-            frame.style.animation = pattern.animation;
+            frame.style.animation = pattern;
             
-            return new Promise(resolve => setTimeout(resolve, pattern.duration));
-        }
-
-        async function enterContemplativeState() {
-            // Series of slower, deeper breaths
-            await changeBreathingPattern(breathingPatterns.relax);
-            await changeBreathingPattern(breathingPatterns.deep);
-            await changeBreathingPattern(breathingPatterns.box);
-            
-            // Return to normal breathing
-            frame.style.animation = breathingPatterns.normal.animation;
-        }
-
-        function scheduleContemplativeMoments() {
-            const minDelay = 60000; // 1 minute
-            const maxDelay = 180000; // 3 minutes
-            const nextMoment = Math.random() * (maxDelay - minDelay) + minDelay;
-            
-            setTimeout(() => {
-                enterContemplativeState();
-                scheduleContemplativeMoments();
-            }, nextMoment);
-        }
-
-        // Enhanced blinking logic
-        const blinkTypes = {
-            quick: {
-                duration: 200,
-                class: 'blink'
-            },
-            slow: {
-                duration: 300,
-                class: 'blink slow-blink'
-            },
-            mindful: {
-                duration: 500,
-                class: 'blink very-slow-blink'
-            },
-            double: {
-                duration: 200,
-                interval: 150,
-                class: 'blink'
+            if (duration) {
+                setTimeout(() => {
+                    frame.style.animation = breathingPatterns.normal.animation;
+                    isDeepBreathing = false;
+                }, duration);
             }
+        }
+
+        // Audio visualization setup
+        function setupAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaElementSource(audio);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                analyser.fftSize = 32;
+            }
+        }
+
+        // Mouth animation for audio
+        function updateMouthShape(intensity) {
+            const baseHeight = 2;
+            const maxHeight = 15;
+            const height = baseHeight + (intensity * maxHeight);
+            const controlY = 52 - height;
+            
+            // Create a more natural curve based on audio intensity
+            const path = `M2 ${baseHeight}C138.333 ${controlY} 377.667 ${controlY} 514 ${baseHeight}`;
+            mouthPath.setAttribute('d', path);
+        }
+
+        function startAudioVisualization() {
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            function animate() {
+                if (!isMediating) return;
+                
+                analyser.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                const normalizedIntensity = Math.min(average / 128, 1);
+                
+                updateMouthShape(normalizedIntensity);
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+
+        // Left eye click handler - Toggle meditation
+        leftEye.addEventListener('click', () => {
+            if (!isMediating) {
+                setupAudioContext();
+                audio.play();
+                isMediating = true;
+                startAudioVisualization();
+            } else {
+                audio.pause();
+                audio.currentTime = 0;
+                isMediating = false;
+                mouthPath.setAttribute('d', 'M2 2C138.333 52 377.667 52 514 2');
+            }
+        });
+
+        // Right eye click handler - Trigger deep breathing
+        rightEye.addEventListener('click', () => {
+            if (!isDeepBreathing) {
+                isDeepBreathing = true;
+                changeBreathingPattern(breathingPatterns.deep.animation, 90000); // 1.5 minutes
+            }
+        });
+
+        // Original blinking and contemplative states logic
+        const blinkTypes = {
+            quick: { duration: 200, class: 'blink' },
+            slow: { duration: 300, class: 'blink slow-blink' },
+            mindful: { duration: 500, class: 'blink very-slow-blink' },
+            double: { duration: 200, interval: 150, class: 'blink' }
         };
 
         function executeBlink(type) {
+            const eyes = document.querySelectorAll('.eye');
             return new Promise((resolve) => {
                 switch(type) {
                     case 'mindful':
@@ -272,7 +301,6 @@
 
         // Start animations
         setTimeout(blink, Math.random() * 5000 + 3000);
-        scheduleContemplativeMoments();
     </script>
 </body>
 </html>
