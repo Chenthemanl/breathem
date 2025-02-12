@@ -83,7 +83,7 @@
         }
 
         #mouth-path {
-            transition: d 0.3s ease;
+            transition: all 0.2s ease;
         }
     </style>
 </head>
@@ -114,54 +114,102 @@
         const mouthPath = document.getElementById("mouth-path");
         let meditationActive = false;
         let deepBreathingActive = false;
-        let audioContext = null;
-        let currentMouthTimeout = null;
+        let animationFrame = null;
 
         // Blinking logic
         const blinkTypes = {
             quick: { duration: 200, class: 'blink' },
-            slow: { duration: 300, class: 'blink slow-blink' },
+            slow: { duration: 300, class: 'blink slow-blink' }
         };
 
         function executeBlink(type) {
             return new Promise((resolve) => {
                 const eyes = document.querySelectorAll('.eye');
-                switch(type) {
-                    case 'slow':
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.slow.class));
-                            resolve();
-                        }, blinkTypes.slow.duration);
-                        break;
-                    default:
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.quick.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.quick.class));
-                            resolve();
-                        }, blinkTypes.quick.duration);
-                }
+                const config = blinkTypes[type];
+                eyes.forEach(eye => eye.classList.add(config.class));
+                setTimeout(() => {
+                    eyes.forEach(eye => eye.classList.remove(config.class));
+                    resolve();
+                }, config.duration);
             });
         }
 
         async function blink() {
             const types = ['quick', 'quick', 'quick', 'slow'];
             const selectedType = types[Math.floor(Math.random() * types.length)];
-            
             await executeBlink(selectedType);
             
             const minDelay = 21000;
             const maxDelay = 29000;
             const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
-            
             setTimeout(blink, nextBlinkDelay);
+        }
+
+        function updateMouthShape(value = 0) {
+            // Ensure value is between 0 and 100
+            const intensity = Math.max(0, Math.min(100, value));
+            // Map intensity to control points (52 is default, 2 is max movement)
+            const controlY = 52 - (intensity * 0.5);
+            mouthPath.setAttribute("d", `M2 2C138.333 ${controlY} 377.667 ${controlY} 514 2`);
+        }
+
+        let audioCtx = null;
+        let analyser = null;
+        let dataArray = null;
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 32; // Smaller size for better performance
+            const source = audioCtx.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+
+        function updateAudioVisualization() {
+            if (!meditationActive) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
+            // Scale the average to a more visible range
+            updateMouthShape(average * 1.5);
+            
+            animationFrame = requestAnimationFrame(updateAudioVisualization);
+        }
+
+        function startVisualization() {
+            if (!audioCtx) initAudio();
+            updateAudioVisualization();
+        }
+
+        function stopVisualization() {
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+            updateMouthShape(0);
+        }
+
+        function toggleMeditation() {
+            if (meditationActive) {
+                audio.pause();
+                audio.currentTime = 0;
+                meditationActive = false;
+                stopVisualization();
+            } else {
+                meditationActive = true;
+                audio.play();
+                startVisualization();
+            }
         }
 
         function changeBreathingPattern(animation, duration = 120000) {
             if (deepBreathingActive) return;
             deepBreathingActive = true;
+            
             frame.style.animation = 'none';
-            frame.offsetHeight;
+            frame.offsetHeight; // Trigger reflow
             frame.style.animation = animation;
 
             setTimeout(() => {
@@ -170,91 +218,7 @@
             }, duration);
         }
 
-        function setMouthCurve(intensity = 0) {
-            // Set default curve height and max movement
-            const baseControl = 52;  // Base curve control point
-            const maxMovement = 15;  // Maximum movement range
-            
-            // Calculate the new control point based on intensity
-            const newControl = Math.max(20, baseControl - (intensity * maxMovement));
-            
-            // Always keep endpoints at 2 for consistent small curve
-            mouthPath.setAttribute("d", `M2 2C138.333 ${newControl} 377.667 ${newControl} 514 2`);
-        }
-
-        function smoothTransition(currentValue, targetValue, duration = 300) {
-            const startValue = currentValue;
-            const startTime = performance.now();
-            
-            function update(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                
-                // Easing function
-                const eased = progress < .5 ? 
-                    4 * progress * progress * progress : 
-                    1 - Math.pow(-2 * progress + 2, 3) / 2;
-                
-                const currentIntensity = startValue + (targetValue - startValue) * eased;
-                setMouthCurve(currentIntensity);
-                
-                if (progress < 1) {
-                    currentMouthTimeout = requestAnimationFrame(update);
-                }
-            }
-            
-            if (currentMouthTimeout) {
-                cancelAnimationFrame(currentMouthTimeout);
-            }
-            currentMouthTimeout = requestAnimationFrame(update);
-        }
-
-        function toggleMeditation() {
-            if (meditationActive) {
-                audio.pause();
-                audio.currentTime = 0;
-                // Return to default smile immediately
-                setMouthCurve(0);
-                meditationActive = false;
-                if (audioContext) {
-                    audioContext.close();
-                    audioContext = null;
-                }
-            } else {
-                audio.play();
-                monitorAudioForMouthMovement();
-                meditationActive = true;
-            }
-        }
-
-        function monitorAudioForMouthMovement() {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaElementSource(audio);
-            source.connect(analyser);
-            analyser.connect(audioContext.destination);
-            analyser.fftSize = 256;
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            let lastIntensity = 0;
-
-            function updateMouth() {
-                if (!meditationActive) return;
-                
-                analyser.getByteFrequencyData(dataArray);
-                const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                // Increased sensitivity and range
-                const targetIntensity = avg > 5 ? Math.min(avg / 10, 3) : 0;
-                
-                if (Math.abs(targetIntensity - lastIntensity) > 0.1) {
-                    smoothTransition(lastIntensity, targetIntensity);
-                    lastIntensity = targetIntensity;
-                }
-                
-                requestAnimationFrame(updateMouth);
-            }
-            updateMouth();
-        }
-
+        // Event Listeners
         leftEye.addEventListener("click", toggleMeditation);
         rightEye.addEventListener("click", () => {
             changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
