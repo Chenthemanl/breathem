@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Speech-Responsive Face</title>
+    <title>Mindful Face</title>
     <style>
         body {
             display: flex;
@@ -58,28 +58,16 @@
         }
 
         .eye {
-            width: calc(35 * 100vw / 901);
-            height: calc(34 * 100vw / 901);
-            max-width: 35px;
-            max-height: 34px;
+            width: 35px;
+            height: 34px;
             background-color: #8F8F8F;
             border-radius: 50%;
-            transition: height 0.1s;
-            flex-shrink: 0;
             cursor: pointer;
         }
 
         .mouth-container {
             width: 57.27%;
             height: auto;
-        }
-
-        .blink {
-            height: 2px !important;
-        }
-
-        path {
-            transition: opacity 0.3s ease;
         }
     </style>
 </head>
@@ -92,168 +80,65 @@
                     <div class="eye" id="right-eye"></div>
                 </div>
                 <div class="mouth-container">
-                    <svg width="100%" height="100%" viewBox="0 0 516 54" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path id="smile-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
-                        <path id="speak-path" d="M2 27 L514 27" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round" opacity="0"/>
+                    <svg id="mouth" width="100%" height="100%" viewBox="0 0 516 54" fill="none">
+                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
         </div>
     </div>
 
-    <audio id="meditation-audio" preload="auto">
-        <source src="10-Minute Guided Meditation_ Self-Love  SELF (mp3cut.net).mp3" type="audio/mp3">
-    </audio>
+    <audio id="meditation-audio" src="YOUR_AUDIO_LINK_HERE"></audio>
 
     <script>
-        const frame = document.getElementById('breathing-frame');
-        const leftEye = document.getElementById('left-eye');
-        const rightEye = document.getElementById('right-eye');
-        const smilePath = document.getElementById('smile-path');
-        const speakPath = document.getElementById('speak-path');
-        const audio = document.getElementById('meditation-audio');
-        
-        let isMediating = false;
-        let audioContext = null;
-        let analyser = null;
-        let animationFrameId = null;
+        const frame = document.getElementById("breathing-frame");
+        const leftEye = document.getElementById("left-eye");
+        const rightEye = document.getElementById("right-eye");
+        const audio = document.getElementById("meditation-audio");
+        const mouthPath = document.getElementById("mouth-path");
 
-        async function initAudio() {
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                const source = audioContext.createMediaElementSource(audio);
-                
-                // Configure analyser for speech detection
-                analyser.fftSize = 128;
-                analyser.smoothingTimeConstant = 0.2; // More responsive
-                analyser.minDecibels = -50;  // Adjusted for speech
-                analyser.maxDecibels = -10;
-                
-                source.connect(analyser);
-                analyser.connect(audioContext.destination);
-                
-                return true;
-            } catch (error) {
-                console.error('Audio initialization error:', error);
-                return false;
-            }
+        function changeBreathingPattern(animation, duration = 8000) {
+            frame.style.animation = 'none';
+            frame.offsetHeight;
+            frame.style.animation = animation;
+
+            setTimeout(() => {
+                frame.style.animation = "normalBreathing 5s ease-in-out infinite";
+            }, duration);
         }
 
-        function detectSpeech(dataArray) {
-            // Focus on frequencies typical for speech (85-255 Hz)
-            const speechRange = dataArray.slice(2, 8);
-            const speechEnergy = speechRange.reduce((a, b) => a + b, 0) / speechRange.length;
-            
-            // Focus on other frequencies (potentially music/noise)
-            const otherRange = dataArray.slice(8);
-            const otherEnergy = otherRange.reduce((a, b) => a + b, 0) / otherRange.length;
-            
-            // Speech tends to have more energy in lower frequencies
-            const isSpeech = speechEnergy > otherEnergy * 1.2 && speechEnergy > 30;
-            
-            return isSpeech ? speechEnergy / 128 : 0;
+        function startMeditation() {
+            audio.play();
+            monitorAudioForMouthMovement();
         }
 
-        function updateMouthShape(intensity) {
-            const centerY = 27;
-            const maxMovement = 25; // Increased for more visible movement
-            const midPoint = 258;
-            const controlRange = 150; // Wider moving segment
-            
-            if (intensity > 0.1) {
-                const movement = maxMovement * intensity;
-                
-                // Create path with movement focused in center
-                const pathData = [
-                    'M', 2, centerY,
-                    'L', midPoint - controlRange, centerY,
-                    'Q', midPoint, centerY + movement,
-                    midPoint + controlRange, centerY,
-                    'L', 514, centerY
-                ].join(' ');
-                
-                speakPath.setAttribute('d', pathData);
-            } else {
-                // Return to straight line when no speech detected
-                speakPath.setAttribute('d', `M2 ${centerY} L514 ${centerY}`);
-            }
-        }
+        leftEye.addEventListener("click", startMeditation);
+        rightEye.addEventListener("click", () => {
+            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 12000);
+        });
 
-        function startAudioVisualization() {
+        function monitorAudioForMouthMovement() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            analyser.fftSize = 256;
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            function animate() {
-                if (!isMediating) {
-                    cancelAnimationFrame(animationFrameId);
-                    return;
-                }
-                
+
+            function updateMouth() {
                 analyser.getByteFrequencyData(dataArray);
-                const speechIntensity = detectSpeech(dataArray);
-                updateMouthShape(speechIntensity);
-                
-                animationFrameId = requestAnimationFrame(animate);
-            }
-            
-            animate();
-        }
-
-        leftEye.addEventListener('click', async () => {
-            if (!isMediating) {
-                if (!audioContext) {
-                    const initialized = await initAudio();
-                    if (!initialized) return;
+                const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+                if (avg > 10) {
+                    const height = Math.max(2, avg / 4);
+                    mouthPath.setAttribute("d", `M2 ${height}C138.333 ${52 - height} 377.667 ${52 - height} 514 ${height}`);
+                } else {
+                    frame.style.animation = "normalBreathing 5s ease-in-out infinite";
                 }
-                
-                try {
-                    if (audioContext.state === 'suspended') {
-                        await audioContext.resume();
-                    }
-                    
-                    speakPath.style.opacity = '1';
-                    smilePath.style.opacity = '0';
-                    await audio.play();
-                    isMediating = true;
-                    startAudioVisualization();
-                } catch (error) {
-                    console.error('Audio playback error:', error);
-                    isMediating = false;
-                    smilePath.style.opacity = '1';
-                    speakPath.style.opacity = '0';
-                }
-            } else {
-                audio.pause();
-                audio.currentTime = 0;
-                isMediating = false;
-                smilePath.style.opacity = '1';
-                speakPath.style.opacity = '0';
+                requestAnimationFrame(updateMouth);
             }
-        });
-
-        rightEye.addEventListener('click', () => {
-            frame.style.animation = 'deepBreathing 8s ease-in-out infinite';
-            setTimeout(() => {
-                frame.style.animation = 'normalBreathing 5s ease-in-out infinite';
-            }, 90000);
-        });
-
-        // Simple blink animation
-        function blink() {
-            leftEye.classList.add('blink');
-            rightEye.classList.add('blink');
-            
-            setTimeout(() => {
-                leftEye.classList.remove('blink');
-                rightEye.classList.remove('blink');
-                
-                const nextBlink = Math.random() * 8000 + 2000;
-                setTimeout(blink, nextBlink);
-            }, 200);
+            updateMouth();
         }
-
-        setTimeout(() => blink(), 3000);
-        audio.load();
     </script>
 </body>
 </html>
