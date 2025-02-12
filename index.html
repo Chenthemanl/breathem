@@ -3,6 +3,7 @@
 <head>
     <title>Mindful Face</title>
     <style>
+        /* Base styles remain the same */
         body {
             display: flex;
             justify-content: center;
@@ -31,13 +32,46 @@
         }
 
         @keyframes normalBreathing {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(0.98); }
+            0%, 100% { 
+                transform: scale(1);
+            }
+            50% { 
+                transform: scale(0.98); 
+            }
         }
 
         @keyframes deepBreathing {
+            0%, 100% { 
+                transform: scale(1);
+            }
+            50% { 
+                transform: scale(0.975); 
+            }
+        }
+
+        @keyframes boxBreathing {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(0.975); }
+            25% { transform: scale(0.985); }
+            50% { transform: scale(0.985); }
+            75% { transform: scale(1); }
+        }
+
+        @keyframes relaxBreathing {
+            0%, 100% { transform: scale(1); }
+            30% { transform: scale(0.982); }
+            70% { transform: scale(0.982); }
+        }
+
+        .deep-breath {
+            animation: deepBreathing 8s ease-in-out;
+        }
+
+        .box-breath {
+            animation: boxBreathing 16s linear;
+        }
+
+        .relax-breath {
+            animation: relaxBreathing 12s ease-in-out;
         }
 
         .content-wrapper {
@@ -58,87 +92,187 @@
         }
 
         .eye {
-            width: 35px;
-            height: 34px;
+            width: calc(35 * 100vw / 901);
+            height: calc(34 * 100vw / 901);
+            max-width: 35px;
+            max-height: 34px;
             background-color: #8F8F8F;
             border-radius: 50%;
-            cursor: pointer;
+            transition: height 0.1s;
+            flex-shrink: 0;
         }
 
         .mouth-container {
             width: 57.27%;
             height: auto;
         }
+
+        .blink {
+            height: 2px !important;
+        }
+
+        .slow-blink {
+            transition: height 0.3s;
+        }
+
+        .very-slow-blink {
+            transition: height 0.5s;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="frame-container">
-        <div class="frame" id="breathing-frame">
+        <div class="frame">
             <div class="content-wrapper">
                 <div class="eyes-container">
-                    <div class="eye" id="left-eye"></div>
-                    <div class="eye" id="right-eye"></div>
+                    <div class="eye"></div>
+                    <div class="eye"></div>
                 </div>
                 <div class="mouth-container">
-                    <svg id="mouth" width="100%" height="100%" viewBox="0 0 516 54" fill="none">
-                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                    <svg width="100%" height="100%" viewBox="0 0 516 54" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
         </div>
     </div>
 
-    <audio id="meditation-audio" src="10-Minute Guided Meditation_ Self-Love  SELF (mp3cut.net).mp3"></audio>
-
     <script>
-        const frame = document.getElementById("breathing-frame");
-        const leftEye = document.getElementById("left-eye");
-        const rightEye = document.getElementById("right-eye");
-        const audio = document.getElementById("meditation-audio");
-        const mouthPath = document.getElementById("mouth-path");
-
-        function changeBreathingPattern(animation, duration = 8000) {
-            frame.style.animation = 'none';
-            frame.offsetHeight;
-            frame.style.animation = animation;
-
-            setTimeout(() => {
-                frame.style.animation = "normalBreathing 5s ease-in-out infinite";
-            }, duration);
-        }
-
-        function startMeditation() {
-            audio.play();
-            monitorAudioForMouthMovement();
-        }
-
-        leftEye.addEventListener("click", startMeditation);
-        rightEye.addEventListener("click", () => {
-            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 12000);
-        });
-
-        function monitorAudioForMouthMovement() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaElementSource(audio);
-            source.connect(analyser);
-            analyser.connect(audioContext.destination);
-            analyser.fftSize = 256;
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-            function updateMouth() {
-                analyser.getByteFrequencyData(dataArray);
-                const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                if (avg > 10) {
-                    const height = Math.max(2, avg / 4);
-                    mouthPath.setAttribute("d", `M2 ${height}C138.333 ${52 - height} 377.667 ${52 - height} 514 ${height}`);
-                } else {
-                    frame.style.animation = "normalBreathing 5s ease-in-out infinite";
-                }
-                requestAnimationFrame(updateMouth);
+        const frame = document.querySelector('.frame');
+        const eyes = document.querySelectorAll('.eye');
+        
+        // Breathing patterns
+        const breathingPatterns = {
+            normal: {
+                animation: 'normalBreathing 5s ease-in-out infinite',
+                duration: 5000
+            },
+            deep: {
+                animation: 'deepBreathing 8s ease-in-out',
+                duration: 8000
+            },
+            box: {
+                animation: 'boxBreathing 16s linear',
+                duration: 16000
+            },
+            relax: {
+                animation: 'relaxBreathing 12s ease-in-out',
+                duration: 12000
             }
-            updateMouth();
+        };
+
+        function changeBreathingPattern(pattern) {
+            frame.style.animation = 'none';
+            frame.offsetHeight; // Trigger reflow
+            frame.style.animation = pattern.animation;
+            
+            return new Promise(resolve => setTimeout(resolve, pattern.duration));
         }
+
+        async function enterContemplativeState() {
+            // Series of slower, deeper breaths
+            await changeBreathingPattern(breathingPatterns.relax);
+            await changeBreathingPattern(breathingPatterns.deep);
+            await changeBreathingPattern(breathingPatterns.box);
+            
+            // Return to normal breathing
+            frame.style.animation = breathingPatterns.normal.animation;
+        }
+
+        function scheduleContemplativeMoments() {
+            const minDelay = 60000; // 1 minute
+            const maxDelay = 180000; // 3 minutes
+            const nextMoment = Math.random() * (maxDelay - minDelay) + minDelay;
+            
+            setTimeout(() => {
+                enterContemplativeState();
+                scheduleContemplativeMoments();
+            }, nextMoment);
+        }
+
+        // Enhanced blinking logic
+        const blinkTypes = {
+            quick: {
+                duration: 200,
+                class: 'blink'
+            },
+            slow: {
+                duration: 300,
+                class: 'blink slow-blink'
+            },
+            mindful: {
+                duration: 500,
+                class: 'blink very-slow-blink'
+            },
+            double: {
+                duration: 200,
+                interval: 150,
+                class: 'blink'
+            }
+        };
+
+        function executeBlink(type) {
+            return new Promise((resolve) => {
+                switch(type) {
+                    case 'mindful':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.mindful.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.mindful.class));
+                            resolve();
+                        }, blinkTypes.mindful.duration);
+                        break;
+                    case 'double':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
+                            setTimeout(() => {
+                                eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
+                                setTimeout(() => {
+                                    eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
+                                    resolve();
+                                }, blinkTypes.double.duration);
+                            }, blinkTypes.double.interval);
+                        }, blinkTypes.double.duration);
+                        break;
+                    case 'slow':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.slow.class));
+                            resolve();
+                        }, blinkTypes.slow.duration);
+                        break;
+                    default:
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.quick.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.quick.class));
+                            resolve();
+                        }, blinkTypes.quick.duration);
+                }
+            });
+        }
+
+        async function blink() {
+            const types = ['quick', 'quick', 'quick', 'slow', 'mindful', 'double'];
+            const selectedType = types[Math.floor(Math.random() * types.length)];
+            
+            await executeBlink(selectedType);
+            
+            const minDelay = 21000;
+            const maxDelay = 29000;
+            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+            
+            setTimeout(blink, nextBlinkDelay);
+        }
+
+        // Start animations
+        setTimeout(blink, Math.random() * 5000 + 3000);
+        scheduleContemplativeMoments();
     </script>
 </body>
 </html>
