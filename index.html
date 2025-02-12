@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Interactive Mindful Face</title>
+    <title>Speaking Face</title>
     <style>
         body {
             display: flex;
@@ -78,22 +78,8 @@
             height: 2px !important;
         }
 
-        .slow-blink {
-            transition: height 0.3s;
-        }
-
-        .very-slow-blink {
-            transition: height 0.5s;
-        }
-
         path {
             transition: opacity 0.3s ease;
-        }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
         }
     </style>
 </head>
@@ -108,7 +94,7 @@
                 <div class="mouth-container">
                     <svg width="100%" height="100%" viewBox="0 0 516 54" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path id="smile-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
-                        <path id="speak-path" d="M2 27 C172 27 258 27 344 27 514 27" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round" opacity="0"/>
+                        <path id="speak-path" d="M2 27 L514 27" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round" opacity="0"/>
                     </svg>
                 </div>
             </div>
@@ -130,9 +116,8 @@
         let isMediating = false;
         let audioContext = null;
         let analyser = null;
-        let isDeepBreathing = false;
-        
-        // Initialize audio context on user interaction
+        let animationFrameId = null;
+
         async function initAudio() {
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -151,60 +136,64 @@
         }
 
         function updateSpeakingAnimation(intensity) {
-            const baseY = 27;
-            const maxMovement = 20;
-            const time = Date.now() / 150;
+            // Get the middle y-position and calculate movement
+            const centerY = 27;
+            const maxMovement = 15; // Increased for more visible movement
+            const time = Date.now() / 80; // Faster oscillation
             const movement = Math.sin(time) * maxMovement * intensity;
-            
-            const path = `M2 ${baseY} ` +
-                        `C172 ${baseY} ` +
-                        `258 ${baseY + movement} ` +
-                        `344 ${baseY} ` +
-                        `514 ${baseY}`;
-            
-            speakPath.setAttribute('d', path);
+
+            // Define the segments of the line
+            const midPoint = 258; // Center point
+            const controlRange = 100; // Width of the moving segment
+
+            // Create a more pronounced movement in the center
+            const pathData = [
+                'M', 2, centerY,
+                'L', midPoint - controlRange, centerY,
+                'Q', midPoint, centerY + movement,
+                midPoint + controlRange, centerY,
+                'L', 514, centerY
+            ].join(' ');
+
+            speakPath.setAttribute('d', pathData);
         }
 
         function startAudioVisualization() {
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
             
             function animate() {
-                if (!isMediating) return;
+                if (!isMediating) {
+                    cancelAnimationFrame(animationFrameId);
+                    return;
+                }
                 
                 analyser.getByteFrequencyData(dataArray);
                 const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
                 const normalizedIntensity = Math.min(average / 128, 1);
                 
                 updateSpeakingAnimation(normalizedIntensity);
-                requestAnimationFrame(animate);
+                animationFrameId = requestAnimationFrame(animate);
             }
             
             animate();
         }
 
-        // Left eye click handler - Toggle meditation with proper audio initialization
+        // Eye click handlers
         leftEye.addEventListener('click', async () => {
             if (!isMediating) {
-                // Initialize audio if not already done
                 if (!audioContext) {
                     const initialized = await initAudio();
-                    if (!initialized) {
-                        console.error('Failed to initialize audio');
-                        return;
-                    }
+                    if (!initialized) return;
                 }
                 
                 try {
-                    // Resume AudioContext if it was suspended
                     if (audioContext.state === 'suspended') {
                         await audioContext.resume();
                     }
                     
-                    // Ensure audio is ready to play
-                    await audio.play();
-                    
-                    smilePath.style.opacity = '0';
                     speakPath.style.opacity = '1';
+                    smilePath.style.opacity = '0';
+                    await audio.play();
                     isMediating = true;
                     startAudioVisualization();
                 } catch (error) {
@@ -222,85 +211,30 @@
             }
         });
 
-        // Right eye click handler - Deep breathing
         rightEye.addEventListener('click', () => {
-            if (!isDeepBreathing) {
-                isDeepBreathing = true;
-                frame.style.animation = 'none';
-                frame.offsetHeight;
-                frame.style.animation = 'deepBreathing 8s ease-in-out infinite';
-                
-                setTimeout(() => {
-                    frame.style.animation = 'normalBreathing 5s ease-in-out infinite';
-                    isDeepBreathing = false;
-                }, 90000); // 1.5 minutes
-            }
+            frame.style.animation = 'deepBreathing 8s ease-in-out infinite';
+            setTimeout(() => {
+                frame.style.animation = 'normalBreathing 5s ease-in-out infinite';
+            }, 90000); // 1.5 minutes
         });
 
-        // Blinking functionality
-        const blinkTypes = {
-            quick: { duration: 200, class: 'blink' },
-            slow: { duration: 300, class: 'blink slow-blink' },
-            mindful: { duration: 500, class: 'blink very-slow-blink' },
-            double: { duration: 200, interval: 150, class: 'blink' }
-        };
-
-        function executeBlink(type) {
-            const eyes = document.querySelectorAll('.eye');
-            return new Promise((resolve) => {
-                switch(type) {
-                    case 'mindful':
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.mindful.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.mindful.class));
-                            resolve();
-                        }, blinkTypes.mindful.duration);
-                        break;
-                    case 'double':
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
-                            setTimeout(() => {
-                                eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
-                                setTimeout(() => {
-                                    eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
-                                    resolve();
-                                }, blinkTypes.double.duration);
-                            }, blinkTypes.double.interval);
-                        }, blinkTypes.double.duration);
-                        break;
-                    case 'slow':
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.slow.class));
-                            resolve();
-                        }, blinkTypes.slow.duration);
-                        break;
-                    default:
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.quick.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.quick.class));
-                            resolve();
-                        }, blinkTypes.quick.duration);
-                }
-            });
+        // Simple blink animation
+        function blink() {
+            leftEye.classList.add('blink');
+            rightEye.classList.add('blink');
+            
+            setTimeout(() => {
+                leftEye.classList.remove('blink');
+                rightEye.classList.remove('blink');
+                
+                // Schedule next blink
+                const nextBlink = Math.random() * 8000 + 2000;
+                setTimeout(blink, nextBlink);
+            }, 200);
         }
 
-        async function blink() {
-            const types = ['quick', 'quick', 'quick', 'slow', 'mindful', 'double'];
-            const selectedType = types[Math.floor(Math.random() * types.length)];
-            
-            await executeBlink(selectedType);
-            
-            const minDelay = 21000;
-            const maxDelay = 29000;
-            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
-            
-            setTimeout(blink, nextBlinkDelay);
-        }
-
-        // Start blinking animation
-        setTimeout(blink, Math.random() * 5000 + 3000);
+        // Start blinking
+        setTimeout(() => blink(), 3000);
 
         // Preload audio
         audio.load();
