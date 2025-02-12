@@ -49,8 +49,29 @@
             }
         }
 
+        @keyframes boxBreathing {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(0.985); }
+            50% { transform: scale(0.985); }
+            75% { transform: scale(1); }
+        }
+
+        @keyframes relaxBreathing {
+            0%, 100% { transform: scale(1); }
+            30% { transform: scale(0.982); }
+            70% { transform: scale(0.982); }
+        }
+
         .deep-breath {
             animation: deepBreathing 8s ease-in-out;
+        }
+
+        .box-breath {
+            animation: boxBreathing 16s linear;
+        }
+
+        .relax-breath {
+            animation: relaxBreathing 12s ease-in-out;
         }
 
         .content-wrapper {
@@ -94,6 +115,10 @@
             transition: height 0.3s;
         }
 
+        .very-slow-blink {
+            transition: height 0.5s;
+        }
+
         @media (max-width: 768px) {
             body {
                 padding: 10px;
@@ -123,28 +148,55 @@
         const eyes = document.querySelectorAll('.eye');
         
         // Breathing patterns
-        function takeDeepBreath() {
+        const breathingPatterns = {
+            normal: {
+                animation: 'normalBreathing 5s ease-in-out infinite',
+                duration: 5000
+            },
+            deep: {
+                animation: 'deepBreathing 8s ease-in-out',
+                duration: 8000
+            },
+            box: {
+                animation: 'boxBreathing 16s linear',
+                duration: 16000
+            },
+            relax: {
+                animation: 'relaxBreathing 12s ease-in-out',
+                duration: 12000
+            }
+        };
+
+        function changeBreathingPattern(pattern) {
             frame.style.animation = 'none';
             frame.offsetHeight; // Trigger reflow
-            frame.style.animation = 'deepBreathing 8s ease-in-out';
+            frame.style.animation = pattern.animation;
             
-            setTimeout(() => {
-                frame.style.animation = 'normalBreathing 5s ease-in-out infinite';
-            }, 8000);
+            return new Promise(resolve => setTimeout(resolve, pattern.duration));
         }
 
-        function scheduleDeepBreaths() {
-            const minDelay = 30000; // 30 seconds
-            const maxDelay = 90000; // 90 seconds
-            const nextDeepBreath = Math.random() * (maxDelay - minDelay) + minDelay;
+        async function enterContemplativeState() {
+            // Series of slower, deeper breaths
+            await changeBreathingPattern(breathingPatterns.relax);
+            await changeBreathingPattern(breathingPatterns.deep);
+            await changeBreathingPattern(breathingPatterns.box);
             
-            setTimeout(() => {
-                takeDeepBreath();
-                scheduleDeepBreaths();
-            }, nextDeepBreath);
+            // Return to normal breathing
+            frame.style.animation = breathingPatterns.normal.animation;
         }
 
-        // Blinking logic
+        function scheduleContemplativeMoments() {
+            const minDelay = 60000; // 1 minute
+            const maxDelay = 180000; // 3 minutes
+            const nextMoment = Math.random() * (maxDelay - minDelay) + minDelay;
+            
+            setTimeout(() => {
+                enterContemplativeState();
+                scheduleContemplativeMoments();
+            }, nextMoment);
+        }
+
+        // Enhanced blinking logic
         const blinkTypes = {
             quick: {
                 duration: 200,
@@ -153,6 +205,10 @@
             slow: {
                 duration: 300,
                 class: 'blink slow-blink'
+            },
+            mindful: {
+                duration: 500,
+                class: 'blink very-slow-blink'
             },
             double: {
                 duration: 200,
@@ -164,6 +220,13 @@
         function executeBlink(type) {
             return new Promise((resolve) => {
                 switch(type) {
+                    case 'mindful':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.mindful.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.mindful.class));
+                            resolve();
+                        }, blinkTypes.mindful.duration);
+                        break;
                     case 'double':
                         eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
                         setTimeout(() => {
@@ -177,7 +240,6 @@
                             }, blinkTypes.double.interval);
                         }, blinkTypes.double.duration);
                         break;
-                    
                     case 'slow':
                         eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
                         setTimeout(() => {
@@ -185,7 +247,6 @@
                             resolve();
                         }, blinkTypes.slow.duration);
                         break;
-                    
                     default:
                         eyes.forEach(eye => eye.classList.add(blinkTypes.quick.class));
                         setTimeout(() => {
@@ -197,7 +258,7 @@
         }
 
         async function blink() {
-            const types = ['quick', 'quick', 'quick', 'slow', 'double'];
+            const types = ['quick', 'quick', 'quick', 'slow', 'mindful', 'double'];
             const selectedType = types[Math.floor(Math.random() * types.length)];
             
             await executeBlink(selectedType);
@@ -211,7 +272,7 @@
 
         // Start animations
         setTimeout(blink, Math.random() * 5000 + 3000);
-        scheduleDeepBreaths();
+        scheduleContemplativeMoments();
     </script>
 </body>
 </html>
