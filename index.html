@@ -58,10 +58,14 @@
         }
 
         .eye {
-            width: 35px;
-            height: 34px;
+            width: calc(35 * 100vw / 901);
+            height: calc(34 * 100vw / 901);
+            max-width: 35px;
+            max-height: 34px;
             background-color: #8F8F8F;
             border-radius: 50%;
+            transition: height 0.1s;
+            flex-shrink: 0;
             cursor: pointer;
         }
 
@@ -70,8 +74,16 @@
             height: auto;
         }
 
+        .blink {
+            height: 2px !important;
+        }
+
+        .slow-blink {
+            transition: height 0.3s;
+        }
+
         #mouth-path {
-            transition: d 0.3s ease-out;
+            transition: d 0.3s ease;
         }
     </style>
 </head>
@@ -102,10 +114,62 @@
         const mouthPath = document.getElementById("mouth-path");
         let meditationActive = false;
         let deepBreathingActive = false;
-        let lastAudioLevel = 0;
+        let audioContext = null;
+        let currentMouthTimeout = null;
 
-        // Default subtle curve path
-        const defaultPath = "M2 2C138.333 52 377.667 52 514 2";
+        // Blinking logic from previous version
+        const blinkTypes = {
+            quick: { duration: 200, class: 'blink' },
+            slow: { duration: 300, class: 'blink slow-blink' },
+            double: { duration: 200, interval: 150, class: 'blink' }
+        };
+
+        function executeBlink(type) {
+            return new Promise((resolve) => {
+                const eyes = document.querySelectorAll('.eye');
+                switch(type) {
+                    case 'double':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
+                            setTimeout(() => {
+                                eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
+                                setTimeout(() => {
+                                    eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
+                                    resolve();
+                                }, blinkTypes.double.duration);
+                            }, blinkTypes.double.interval);
+                        }, blinkTypes.double.duration);
+                        break;
+                    case 'slow':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.slow.class));
+                            resolve();
+                        }, blinkTypes.slow.duration);
+                        break;
+                    default:
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.quick.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.quick.class));
+                            resolve();
+                        }, blinkTypes.quick.duration);
+                }
+            });
+        }
+
+        async function blink() {
+            const types = ['quick', 'quick', 'quick', 'slow', 'double'];
+            const selectedType = types[Math.floor(Math.random() * types.length)];
+            
+            await executeBlink(selectedType);
+            
+            const minDelay = 21000;
+            const maxDelay = 29000;
+            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+            
+            setTimeout(blink, nextBlinkDelay);
+        }
 
         function changeBreathingPattern(animation, duration = 120000) {
             if (deepBreathingActive) return;
@@ -120,12 +184,50 @@
             }, duration);
         }
 
+        function setMouthCurve(intensity = 0) {
+            const baseHeight = 2;
+            const height = baseHeight + intensity;
+            const controlHeight = Math.max(52, 52 + intensity/2);
+            mouthPath.setAttribute("d", `M2 ${baseHeight}C138.333 ${controlHeight} 377.667 ${controlHeight} 514 ${baseHeight}`);
+        }
+
+        function smoothTransition(currentValue, targetValue, duration = 300) {
+            const startValue = currentValue;
+            const startTime = performance.now();
+            
+            function update(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Easing function
+                const eased = progress < .5 ? 
+                    4 * progress * progress * progress : 
+                    1 - Math.pow(-2 * progress + 2, 3) / 2;
+                
+                const currentIntensity = startValue + (targetValue - startValue) * eased;
+                setMouthCurve(currentIntensity);
+                
+                if (progress < 1) {
+                    currentMouthTimeout = requestAnimationFrame(update);
+                }
+            }
+            
+            if (currentMouthTimeout) {
+                cancelAnimationFrame(currentMouthTimeout);
+            }
+            currentMouthTimeout = requestAnimationFrame(update);
+        }
+
         function toggleMeditation() {
             if (meditationActive) {
                 audio.pause();
                 audio.currentTime = 0;
-                mouthPath.setAttribute("d", defaultPath);
+                smoothTransition(20, 0);
                 meditationActive = false;
+                if (audioContext) {
+                    audioContext.close();
+                    audioContext = null;
+                }
             } else {
                 audio.play();
                 monitorAudioForMouthMovement();
@@ -133,53 +235,40 @@
             }
         }
 
-        leftEye.addEventListener("click", toggleMeditation);
-        rightEye.addEventListener("click", () => {
-            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
-        });
-
-        function lerp(start, end, t) {
-            return start * (1 - t) + end * t;
-        }
-
         function monitorAudioForMouthMovement() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const analyser = audioContext.createAnalyser();
             const source = audioContext.createMediaElementSource(audio);
             source.connect(analyser);
             analyser.connect(audioContext.destination);
             analyser.fftSize = 256;
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            let lastIntensity = 0;
 
             function updateMouth() {
+                if (!meditationActive) return;
+                
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+                const targetIntensity = avg > 10 ? Math.min(avg / 4, 20) : 0;
                 
-                // Smooth the audio level changes
-                lastAudioLevel = lerp(lastAudioLevel, avg, 0.3);
-                
-                if (lastAudioLevel > 5) {
-                    // Calculate a smooth height based on audio level
-                    const height = Math.min(25, Math.max(5, lastAudioLevel / 3));
-                    const controlHeight = 52 - height/2; // Adjust control points for smoother curve
-                    
-                    // Create a smooth curve that responds to audio
-                    mouthPath.setAttribute("d", 
-                        `M2 ${2 + height/2}
-                         C138.333 ${controlHeight} 377.667 ${controlHeight} 
-                         514 ${2 + height/2}`
-                    );
-                } else {
-                    // Return to default subtle curve when audio is quiet
-                    mouthPath.setAttribute("d", defaultPath);
+                if (Math.abs(targetIntensity - lastIntensity) > 0.5) {
+                    smoothTransition(lastIntensity, targetIntensity);
+                    lastIntensity = targetIntensity;
                 }
                 
-                if (!audio.paused) {
-                    requestAnimationFrame(updateMouth);
-                }
+                requestAnimationFrame(updateMouth);
             }
             updateMouth();
         }
+
+        leftEye.addEventListener("click", toggleMeditation);
+        rightEye.addEventListener("click", () => {
+            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
+        });
+
+        // Start blinking
+        setTimeout(blink, Math.random() * 5000 + 3000);
     </script>
 </body>
 </html>
