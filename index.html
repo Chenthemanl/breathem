@@ -81,7 +81,7 @@
                 </div>
                 <div class="mouth-container">
                     <svg id="mouth" width="100%" height="100%" viewBox="0 0 516 54" fill="none">
-                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                        <path id="mouth-path" d="M2 27C138.333 27 377.667 27 514 27" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
@@ -96,25 +96,38 @@
         const rightEye = document.getElementById("right-eye");
         const audio = document.getElementById("meditation-audio");
         const mouthPath = document.getElementById("mouth-path");
+        let meditationActive = false;
+        let deepBreathingActive = false;
 
-        function changeBreathingPattern(animation, duration = 8000) {
+        function changeBreathingPattern(animation, duration = 120000) {
+            if (deepBreathingActive) return;
+            deepBreathingActive = true;
             frame.style.animation = 'none';
             frame.offsetHeight;
             frame.style.animation = animation;
 
             setTimeout(() => {
                 frame.style.animation = "normalBreathing 5s ease-in-out infinite";
+                deepBreathingActive = false;
             }, duration);
         }
 
-        function startMeditation() {
-            audio.play();
-            monitorAudioForMouthMovement();
+        function toggleMeditation() {
+            if (meditationActive) {
+                audio.pause();
+                audio.currentTime = 0;
+                frame.style.animation = "normalBreathing 5s ease-in-out infinite";
+                meditationActive = false;
+            } else {
+                audio.play();
+                monitorAudioForMouthMovement();
+                meditationActive = true;
+            }
         }
 
-        leftEye.addEventListener("click", startMeditation);
+        leftEye.addEventListener("click", toggleMeditation);
         rightEye.addEventListener("click", () => {
-            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 12000);
+            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
         });
 
         function monitorAudioForMouthMovement() {
@@ -130,12 +143,12 @@
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
                 if (avg > 10) {
-                    const height = Math.max(2, avg / 4);
-                    mouthPath.setAttribute("d", `M2 ${height}C138.333 ${52 - height} 377.667 ${52 - height} 514 ${height}`);
+                    const height = Math.max(5, avg / 3);
+                    mouthPath.setAttribute("d", `M2 ${27 - height}C138.333 ${27 + height} 377.667 ${27 + height} 514 ${27 - height}`);
                 } else {
-                    frame.style.animation = "normalBreathing 5s ease-in-out infinite";
+                    mouthPath.setAttribute("d", "M2 27C138.333 27 377.667 27 514 27");
                 }
-                requestAnimationFrame(updateMouth);
+                if (!audio.paused) requestAnimationFrame(updateMouth);
             }
             updateMouth();
         }
