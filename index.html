@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Speaking Face</title>
+    <title>Speech-Responsive Face</title>
     <style>
         body {
             display: flex;
@@ -124,7 +124,12 @@
                 analyser = audioContext.createAnalyser();
                 const source = audioContext.createMediaElementSource(audio);
                 
-                analyser.fftSize = 32;
+                // Configure analyser for speech detection
+                analyser.fftSize = 128;
+                analyser.smoothingTimeConstant = 0.2; // More responsive
+                analyser.minDecibels = -50;  // Adjusted for speech
+                analyser.maxDecibels = -10;
+                
                 source.connect(analyser);
                 analyser.connect(audioContext.destination);
                 
@@ -135,27 +140,44 @@
             }
         }
 
-        function updateSpeakingAnimation(intensity) {
-            // Get the middle y-position and calculate movement
+        function detectSpeech(dataArray) {
+            // Focus on frequencies typical for speech (85-255 Hz)
+            const speechRange = dataArray.slice(2, 8);
+            const speechEnergy = speechRange.reduce((a, b) => a + b, 0) / speechRange.length;
+            
+            // Focus on other frequencies (potentially music/noise)
+            const otherRange = dataArray.slice(8);
+            const otherEnergy = otherRange.reduce((a, b) => a + b, 0) / otherRange.length;
+            
+            // Speech tends to have more energy in lower frequencies
+            const isSpeech = speechEnergy > otherEnergy * 1.5 && speechEnergy > 40;
+            
+            return isSpeech ? speechEnergy / 128 : 0;
+        }
+
+        function updateMouthShape(intensity) {
             const centerY = 27;
             const maxMovement = 18; // Increased for more visible movement
-            const time = Date.now() / 90; // Faster oscillation
-            const movement = Math.sin(time) * maxMovement * intensity;
-
-            // Define the segments of the line
-            const midPoint = 258; // Center point
-            const controlRange = 180; // Width of the moving segment
-
-            // Create a more pronounced movement in the center
-            const pathData = [
-                'M', 2, centerY,
-                'L', midPoint - controlRange, centerY,
-                'Q', midPoint, centerY + movement,
-                midPoint + controlRange, centerY,
-                'L', 514, centerY
-            ].join(' ');
-
-            speakPath.setAttribute('d', pathData);
+            const midPoint = 258;
+            const controlRange = 180; // Wider moving segment
+            
+            if (intensity > 0.1) {
+                const movement = maxMovement * intensity;
+                
+                // Create path with movement focused in center
+                const pathData = [
+                    'M', 2, centerY,
+                    'L', midPoint - controlRange, centerY,
+                    'Q', midPoint, centerY + movement,
+                    midPoint + controlRange, centerY,
+                    'L', 514, centerY
+                ].join(' ');
+                
+                speakPath.setAttribute('d', pathData);
+            } else {
+                // Return to straight line when no speech detected
+                speakPath.setAttribute('d', `M2 ${centerY} L514 ${centerY}`);
+            }
         }
 
         function startAudioVisualization() {
@@ -168,17 +190,15 @@
                 }
                 
                 analyser.getByteFrequencyData(dataArray);
-                const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-                const normalizedIntensity = Math.min(average / 128, 1);
+                const speechIntensity = detectSpeech(dataArray);
+                updateMouthShape(speechIntensity);
                 
-                updateSpeakingAnimation(normalizedIntensity);
                 animationFrameId = requestAnimationFrame(animate);
             }
             
             animate();
         }
 
-        // Eye click handlers
         leftEye.addEventListener('click', async () => {
             if (!isMediating) {
                 if (!audioContext) {
@@ -215,7 +235,7 @@
             frame.style.animation = 'deepBreathing 8s ease-in-out infinite';
             setTimeout(() => {
                 frame.style.animation = 'normalBreathing 5s ease-in-out infinite';
-            }, 90000); // 1.5 minutes
+            }, 90000);
         });
 
         // Simple blink animation
@@ -227,16 +247,12 @@
                 leftEye.classList.remove('blink');
                 rightEye.classList.remove('blink');
                 
-                // Schedule next blink
                 const nextBlink = Math.random() * 8000 + 2000;
                 setTimeout(blink, nextBlink);
             }, 200);
         }
 
-        // Start blinking
         setTimeout(() => blink(), 3000);
-
-        // Preload audio
         audio.load();
     </script>
 </body>
