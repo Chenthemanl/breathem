@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mindful</title>
+    <title>Mindful Face</title>
     <style>
         body {
             display: flex;
@@ -171,16 +171,15 @@
         }
 
         function setMouthCurve(intensity = 0) {
-            // Base smile has control points at 52
-            const minControl = 52;  // Default smile curve
-            const maxControl = 20;  // Maximum upward curve
-            const range = minControl - maxControl;
+            // Set default curve height and max movement
+            const baseControl = 52;  // Base curve control point
+            const maxMovement = 15;  // Maximum movement range
             
-            // Calculate control point Y position
-            const controlY = minControl - (intensity * (range / 100));
+            // Calculate the new control point based on intensity
+            const newControl = Math.max(20, baseControl - (intensity * maxMovement));
             
-            // Keep endpoints at 2 for consistent smile shape
-            mouthPath.setAttribute("d", `M2 2C138.333 ${controlY} 377.667 ${controlY} 514 2`);
+            // Always keep endpoints at 2 for consistent small curve
+            mouthPath.setAttribute("d", `M2 2C138.333 ${newControl} 377.667 ${newControl} 514 2`);
         }
 
         function smoothTransition(currentValue, targetValue, duration = 300) {
@@ -214,7 +213,8 @@
             if (meditationActive) {
                 audio.pause();
                 audio.currentTime = 0;
-                setMouthCurve(0); // Return to default smile
+                // Return to default smile immediately
+                setMouthCurve(0);
                 meditationActive = false;
                 if (audioContext) {
                     audioContext.close();
@@ -242,9 +242,8 @@
                 
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                
-                // More pronounced movement based on audio
-                const targetIntensity = avg > 5 ? Math.min(avg * 1.5, 100) : 0;
+                // Increased sensitivity and range
+                const targetIntensity = avg > 5 ? Math.min(avg / 10, 3) : 0;
                 
                 if (Math.abs(targetIntensity - lastIntensity) > 0.1) {
                     smoothTransition(lastIntensity, targetIntensity);
