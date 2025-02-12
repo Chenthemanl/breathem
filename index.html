@@ -40,6 +40,19 @@
             50% { transform: scale(0.975); }
         }
 
+        @keyframes boxBreathing {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(0.985); }
+            50% { transform: scale(0.985); }
+            75% { transform: scale(1); }
+        }
+
+        @keyframes relaxBreathing {
+            0%, 100% { transform: scale(1); }
+            30% { transform: scale(0.982); }
+            70% { transform: scale(0.982); }
+        }
+
         .content-wrapper {
             position: absolute;
             top: 15.625%;
@@ -58,16 +71,42 @@
         }
 
         .eye {
-            width: 35px;
-            height: 34px;
+            width: calc(35 * 100vw / 901);
+            height: calc(34 * 100vw / 901);
+            max-width: 35px;
+            max-height: 34px;
             background-color: #8F8F8F;
             border-radius: 50%;
+            transition: height 0.1s;
+            flex-shrink: 0;
             cursor: pointer;
         }
 
         .mouth-container {
             width: 57.27%;
             height: auto;
+        }
+
+        #mouth-path {
+            transition: d 0.3s ease-out;
+        }
+
+        .blink {
+            height: 2px !important;
+        }
+
+        .slow-blink {
+            transition: height 0.3s;
+        }
+
+        .very-slow-blink {
+            transition: height 0.5s;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
         }
     </style>
 </head>
@@ -80,8 +119,8 @@
                     <div class="eye" id="right-eye"></div>
                 </div>
                 <div class="mouth-container">
-                    <svg id="mouth" width="100%" height="100%" viewBox="0 0 516 54" fill="none">
-                        <path id="mouth-path" d="M2 27C138.333 27 377.667 27 514 27" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                    <svg width="100%" height="100%" viewBox="0 0 516 54" preserveAspectRatio="xMidYMid meet" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
@@ -91,32 +130,149 @@
     <audio id="meditation-audio" src="10-Minute Guided Meditation_ Self-Love  SELF (mp3cut.net).mp3"></audio>
 
     <script>
-        const frame = document.getElementById("breathing-frame");
+        const frame = document.querySelector('.frame');
+        const eyes = document.querySelectorAll('.eye');
         const leftEye = document.getElementById("left-eye");
         const rightEye = document.getElementById("right-eye");
         const audio = document.getElementById("meditation-audio");
         const mouthPath = document.getElementById("mouth-path");
         let meditationActive = false;
-        let deepBreathingActive = false;
+        let lastAudioLevel = 0;
+        
+        // Default subtle curve path
+        const defaultPath = "M2 2C138.333 52 377.667 52 514 2";
 
-        function changeBreathingPattern(animation, duration = 120000) {
-            if (deepBreathingActive) return;
-            deepBreathingActive = true;
+        // Breathing patterns
+        const breathingPatterns = {
+            normal: {
+                animation: 'normalBreathing 5s ease-in-out infinite',
+                duration: 5000
+            },
+            deep: {
+                animation: 'deepBreathing 8s ease-in-out',
+                duration: 8000
+            },
+            box: {
+                animation: 'boxBreathing 16s linear',
+                duration: 16000
+            },
+            relax: {
+                animation: 'relaxBreathing 12s ease-in-out',
+                duration: 12000
+            }
+        };
+
+        function changeBreathingPattern(pattern) {
             frame.style.animation = 'none';
-            frame.offsetHeight;
-            frame.style.animation = animation;
-
-            setTimeout(() => {
-                frame.style.animation = "normalBreathing 5s ease-in-out infinite";
-                deepBreathingActive = false;
-            }, duration);
+            frame.offsetHeight; // Trigger reflow
+            frame.style.animation = pattern.animation;
+            
+            return new Promise(resolve => setTimeout(resolve, pattern.duration));
         }
 
+        async function enterContemplativeState() {
+            await changeBreathingPattern(breathingPatterns.relax);
+            await changeBreathingPattern(breathingPatterns.deep);
+            await changeBreathingPattern(breathingPatterns.box);
+            
+            frame.style.animation = breathingPatterns.normal.animation;
+        }
+
+        function scheduleContemplativeMoments() {
+            const minDelay = 60000;
+            const maxDelay = 180000;
+            const nextMoment = Math.random() * (maxDelay - minDelay) + minDelay;
+            
+            setTimeout(() => {
+                enterContemplativeState();
+                scheduleContemplativeMoments();
+            }, nextMoment);
+        }
+
+        // Blinking logic
+        const blinkTypes = {
+            quick: {
+                duration: 200,
+                class: 'blink'
+            },
+            slow: {
+                duration: 300,
+                class: 'blink slow-blink'
+            },
+            mindful: {
+                duration: 500,
+                class: 'blink very-slow-blink'
+            },
+            double: {
+                duration: 200,
+                interval: 150,
+                class: 'blink'
+            }
+        };
+
+        function executeBlink(type) {
+            return new Promise((resolve) => {
+                switch(type) {
+                    case 'mindful':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.mindful.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.mindful.class));
+                            resolve();
+                        }, blinkTypes.mindful.duration);
+                        break;
+                    case 'double':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
+                            setTimeout(() => {
+                                eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
+                                setTimeout(() => {
+                                    eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
+                                    resolve();
+                                }, blinkTypes.double.duration);
+                            }, blinkTypes.double.interval);
+                        }, blinkTypes.double.duration);
+                        break;
+                    case 'slow':
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.slow.class));
+                            resolve();
+                        }, blinkTypes.slow.duration);
+                        break;
+                    default:
+                        eyes.forEach(eye => eye.classList.add(blinkTypes.quick.class));
+                        setTimeout(() => {
+                            eyes.forEach(eye => eye.classList.remove(blinkTypes.quick.class));
+                            resolve();
+                        }, blinkTypes.quick.duration);
+                }
+            });
+        }
+
+        async function blink() {
+            const types = ['quick', 'quick', 'quick', 'slow', 'mindful', 'double'];
+            const selectedType = types[Math.floor(Math.random() * types.length)];
+            
+            await executeBlink(selectedType);
+            
+            const minDelay = 21000;
+            const maxDelay = 29000;
+            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+            
+            setTimeout(blink, nextBlinkDelay);
+        }
+
+        function lerp(start, end, t) {
+            return start * (1 - t) + end * t;
+        }
+
+        // Audio and mouth movement
         function toggleMeditation() {
             if (meditationActive) {
                 audio.pause();
                 audio.currentTime = 0;
-                frame.style.animation = "normalBreathing 5s ease-in-out infinite";
+                mouthPath.setAttribute("d", defaultPath);
                 meditationActive = false;
             } else {
                 audio.play();
@@ -124,11 +280,6 @@
                 meditationActive = true;
             }
         }
-
-        leftEye.addEventListener("click", toggleMeditation);
-        rightEye.addEventListener("click", () => {
-            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
-        });
 
         function monitorAudioForMouthMovement() {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -142,16 +293,41 @@
             function updateMouth() {
                 analyser.getByteFrequencyData(dataArray);
                 const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-                if (avg > 10) {
-                    const height = Math.max(5, avg / 3);
-                    mouthPath.setAttribute("d", `M2 ${27 - height}C138.333 ${27 + height} 377.667 ${27 + height} 514 ${27 - height}`);
+                
+                lastAudioLevel = lerp(lastAudioLevel, avg, 0.3);
+                
+                if (lastAudioLevel > 5) {
+                    const height = Math.min(25, Math.max(5, lastAudioLevel / 3));
+                    const controlHeight = 52 - height/2;
+                    
+                    mouthPath.setAttribute("d", 
+                        `M2 ${2 + height/2}
+                         C138.333 ${controlHeight} 377.667 ${controlHeight} 
+                         514 ${2 + height/2}`
+                    );
                 } else {
-                    mouthPath.setAttribute("d", "M2 27C138.333 27 377.667 27 514 27");
+                    mouthPath.setAttribute("d", defaultPath);
                 }
-                if (!audio.paused) requestAnimationFrame(updateMouth);
+                
+                if (!audio.paused) {
+                    requestAnimationFrame(updateMouth);
+                }
             }
             updateMouth();
         }
+
+        // Eye click handlers
+        leftEye.addEventListener("click", toggleMeditation);
+        rightEye.addEventListener("click", () => {
+            changeBreathingPattern({
+                animation: 'deepBreathing 8s ease-in-out',
+                duration: 120000  // 2 minutes
+            });
+        });
+
+        // Start animations
+        setTimeout(blink, Math.random() * 5000 + 3000);
+        scheduleContemplativeMoments();
     </script>
 </body>
 </html>
