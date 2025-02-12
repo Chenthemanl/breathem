@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Interactive Mindfkul Face</title>
+    <title>Interactive Mindful Face</title>
     <style>
         body {
             display: flex;
@@ -190,19 +190,42 @@
         }
 
         function updateSpeakingAnimation(intensity) {
-            const baseY = 27;  // Center position
-            const maxDeviation = 15;  // Maximum movement up/down
-            const movement = Math.sin(Date.now() / 100) * maxDeviation * intensity;
+            const baseY = 27;  // Center line position
+            const maxMovement = 20;  // Maximum movement range
             
-            // Create wave-like motion
+            // Create natural speaking motion focused in the middle
+            const time = Date.now() / 150;  // Speed of movement
+            const movement = Math.sin(time) * maxMovement * intensity;
+            
+            // Keep ends fixed, move middle
             const path = `M2 ${baseY} ` +
-                        `C128 ${baseY + movement} ` +
-                        `258 ${baseY - movement} ` +
-                        `388 ${baseY + movement} ` +
-                        `514 ${baseY}`;
+                        `C172 ${baseY} ` +  // First control point stays level
+                        `258 ${baseY + movement} ` +  // Middle point moves up/down
+                        `344 ${baseY} ` +  // Third control point stays level
+                        `514 ${baseY}`;    // End point
             
             speakPath.setAttribute('d', path);
         }
+
+        // Left eye click handler - Toggle meditation with smoother transitions
+        leftEye.addEventListener('click', () => {
+            if (!isMediating) {
+                setupAudioContext();
+                // Start with line in center position
+                speakPath.setAttribute('d', 'M2 27 C172 27 258 27 344 27 514 27');
+                smilePath.style.opacity = '0';
+                speakPath.style.opacity = '1';
+                audio.play();
+                isMediating = true;
+                startAudioVisualization();
+            } else {
+                audio.pause();
+                audio.currentTime = 0;
+                isMediating = false;
+                smilePath.style.opacity = '1';
+                speakPath.style.opacity = '0';
+            }
+        });
 
         function startAudioVisualization() {
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
