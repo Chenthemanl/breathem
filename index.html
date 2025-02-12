@@ -121,26 +121,12 @@
         const blinkTypes = {
             quick: { duration: 200, class: 'blink' },
             slow: { duration: 300, class: 'blink slow-blink' },
-            double: { duration: 200, interval: 150, class: 'blink' }
         };
 
         function executeBlink(type) {
             return new Promise((resolve) => {
                 const eyes = document.querySelectorAll('.eye');
                 switch(type) {
-                    case 'double':
-                        eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
-                        setTimeout(() => {
-                            eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
-                            setTimeout(() => {
-                                eyes.forEach(eye => eye.classList.add(blinkTypes.double.class));
-                                setTimeout(() => {
-                                    eyes.forEach(eye => eye.classList.remove(blinkTypes.double.class));
-                                    resolve();
-                                }, blinkTypes.double.duration);
-                            }, blinkTypes.double.interval);
-                        }, blinkTypes.double.duration);
-                        break;
                     case 'slow':
                         eyes.forEach(eye => eye.classList.add(blinkTypes.slow.class));
                         setTimeout(() => {
@@ -159,7 +145,7 @@
         }
 
         async function blink() {
-            const types = ['quick', 'quick', 'quick', 'slow', 'double'];
+            const types = ['quick', 'quick', 'quick', 'slow'];
             const selectedType = types[Math.floor(Math.random() * types.length)];
             
             await executeBlink(selectedType);
