@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mindful Face</title>
+    <title>Mindfl Face</title>
     <style>
         body {
             display: flex;
@@ -83,7 +83,7 @@
         }
 
         #mouth-path {
-            transition: all 0.15s ease;
+            transition: all 0.08s ease; /* Faster response time */
         }
     </style>
 </head>
@@ -146,21 +146,20 @@
         }
 
         function updateMouthShape(value = 0) {
-            // Starting from a more curved position (47)
             const baseControl = 47;
-            const minControl = 20;
+            const minControl = 25; // Less extreme movement
             
-            // Calculate vertical movement
-            const normalizedValue = Math.pow(value / 100, 1.5);
+            // More responsive scaling
+            const normalizedValue = Math.pow(value / 100, 1.2); // Less aggressive curve
             const controlY = baseControl - (normalizedValue * (baseControl - minControl));
             
-            // Add horizontal narrowing effect
+            // Smoother narrowing
             const baseX = 2;
-            const narrowing = Math.min(15, value / 3); // Max 15px inward movement
+            const narrowing = Math.min(12, value / 4); // More subtle narrowing
             const startX = baseX + narrowing;
             const endX = 514 - narrowing;
             
-            // Adjust control points horizontally too
+            // Adjust control points for smoother curve
             const leftControl = 138.333 + (narrowing / 2);
             const rightControl = 377.667 - (narrowing / 2);
             
@@ -176,10 +175,10 @@
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 1024;
-            analyser.minDecibels = -70;
-            analyser.maxDecibels = -30;
-            analyser.smoothingTimeConstant = 0.4;
+            analyser.fftSize = 512; // Smaller for less delay
+            analyser.minDecibels = -65; // More sensitive
+            analyser.maxDecibels = -20; // Pick up clearer sounds
+            analyser.smoothingTimeConstant = 0.2; // Less smoothing for faster response
 
             const source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
@@ -188,20 +187,45 @@
         }
 
         function detectSpeech(frequencies) {
-            // Focus on frequency range most common in speech (roughly 85-255 Hz)
-            const speechStart = Math.floor(85 * frequencies.length / audioCtx.sampleRate);
-            const speechEnd = Math.floor(255 * frequencies.length / audioCtx.sampleRate);
+            // Focus more precisely on speech frequencies
+            const sampleRate = audioCtx.sampleRate;
+            const binCount = frequencies.length;
             
-            let speechSum = 0;
-            let count = 0;
+            // Calculate bins for human voice frequencies
+            const voiceStart = Math.floor(85 * binCount / sampleRate);  // 85 Hz
+            const voiceEnd = Math.floor(255 * binCount / sampleRate);   // 255 Hz
             
-            for (let i = speechStart; i < speechEnd; i++) {
-                speechSum += frequencies[i];
-                count++;
+            // Calculate bins for typical music frequencies
+            const musicLow = Math.floor(60 * binCount / sampleRate);    // 60 Hz
+            const musicHigh = Math.floor(1000 * binCount / sampleRate); // 1000 Hz
+            
+            let voiceSum = 0;
+            let musicSum = 0;
+            let voiceCount = 0;
+            let musicCount = 0;
+            
+            // Analyze voice range
+            for (let i = voiceStart; i < voiceEnd; i++) {
+                voiceSum += frequencies[i];
+                voiceCount++;
             }
             
-            const speechAverage = speechSum / count;
-            return speechAverage > 30 ? speechAverage : 0;
+            // Analyze music range
+            for (let i = musicLow; i < musicHigh; i++) {
+                if (i < voiceStart || i > voiceEnd) { // Exclude voice range
+                    musicSum += frequencies[i];
+                    musicCount++;
+                }
+            }
+            
+            const voiceAvg = voiceSum / voiceCount;
+            const musicAvg = musicSum / musicCount;
+            
+            // Only return value if voice is significantly stronger than music
+            if (voiceAvg > musicAvg * 1.2 && voiceAvg > 35) {
+                return voiceAvg;
+            }
+            return 0;
         }
 
         function updateAudioVisualization() {
@@ -210,8 +234,8 @@
             analyser.getByteFrequencyData(dataArray);
             const speechIntensity = detectSpeech(dataArray);
             
-            // Scale the speech intensity to mouth movement
-            const scaledIntensity = Math.min(100, speechIntensity * 2);
+            // More responsive scaling
+            const scaledIntensity = Math.min(100, speechIntensity * 2.5);
             updateMouthShape(scaledIntensity);
             
             animationFrame = requestAnimationFrame(updateAudioVisualization);
