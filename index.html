@@ -448,20 +448,29 @@
         });
 
         // Left eye - meditation and stress reset
-        leftEye.addEventListener('click', () => {
-            if (stressLevel > 0) {  // Only show message and reset when stressed
+        leftEye.addEventListener("click", (event) => {
+            event.stopPropagation(); // Prevent frame click
+            
+            if (stressLevel > 0) {  // Only show message when reducing stress
                 stressLevel = 0;
                 frame.className = 'frame';
                 showMessage("Thanks mate! Feeling much better now!");
             }
+            
+            toggleMeditation(); // Always toggle meditation regardless of stress
         });
         
-        rightEye.addEventListener('click', () => {
-            if (stressLevel > 0) {  // Only show message and reset when stressed
+        // Right eye - breathing pattern and stress reset
+        rightEye.addEventListener("click", (event) => {
+            event.stopPropagation(); // Prevent frame click
+            
+            if (stressLevel > 0) {  // Only show message when reducing stress
                 stressLevel = 0;
                 frame.className = 'frame';
                 showMessage("Thanks mate! Feeling much better now!");
             }
+            
+            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000); // Always trigger breathing pattern
         });
 
         // Initialize systems
