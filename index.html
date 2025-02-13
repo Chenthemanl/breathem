@@ -170,9 +170,9 @@
 
         // Customize trigger words here
         const triggerWords = {
-            high: ['furious', 'enraged', 'livid'], // Increases stress by 2
-            medium: ['angry', 'mad', 'upset'], // Increases stress by 1
-            low: ['annoyed', 'frustrated', 'irritated'] // Increases stress by 0.5
+            high: ['unlock', 'biggest'], // Increases stress by 2
+            medium: ['end-to-end', 'chef'], // Increases stress by 1
+            low: ['exciting'] // Increases stress by 0.5
         };
 
         // Speech recognition setup
@@ -234,7 +234,7 @@
         const resetStress = () => {
             stressLevel = 0;
             updateStressVisuals();
-            showMessage("Feeling better now!");
+            showMessage("Thanks mate, feeling better now!");
         };
 
         // Update visual appearance based on stress level
