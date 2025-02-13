@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mindul Face</title>
+    <title>Mindful Face</title>
     <style>
         body {
             display: flex;
@@ -83,7 +83,7 @@
         }
 
         #mouth-path {
-            transition: all 0.15s ease; /* Faster transition */
+            transition: all 0.15s ease;
         }
     </style>
 </head>
@@ -147,15 +147,26 @@
 
         function updateMouthShape(value = 0) {
             // Starting from a more curved position (47)
-            // and moving to a less extreme maximum
-            const baseControl = 47; // Default curve position
-            const minControl = 20;  // Maximum movement point
+            const baseControl = 47;
+            const minControl = 20;
             
-            // Non-linear scaling for more natural movement
-            const normalizedValue = Math.pow(value / 100, 1.5); // More responsive to small changes
+            // Calculate vertical movement
+            const normalizedValue = Math.pow(value / 100, 1.5);
             const controlY = baseControl - (normalizedValue * (baseControl - minControl));
             
-            mouthPath.setAttribute("d", `M2 2C138.333 ${controlY} 377.667 ${controlY} 514 2`);
+            // Add horizontal narrowing effect
+            const baseX = 2;
+            const narrowing = Math.min(15, value / 3); // Max 15px inward movement
+            const startX = baseX + narrowing;
+            const endX = 514 - narrowing;
+            
+            // Adjust control points horizontally too
+            const leftControl = 138.333 + (narrowing / 2);
+            const rightControl = 377.667 - (narrowing / 2);
+            
+            mouthPath.setAttribute("d", 
+                `M${startX} 2C${leftControl} ${controlY} ${rightControl} ${controlY} ${endX} 2`
+            );
         }
 
         let audioCtx = null;
@@ -165,7 +176,7 @@
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 1024; // Larger FFT for better frequency resolution
+            analyser.fftSize = 1024;
             analyser.minDecibels = -70;
             analyser.maxDecibels = -30;
             analyser.smoothingTimeConstant = 0.4;
@@ -190,7 +201,6 @@
             }
             
             const speechAverage = speechSum / count;
-            // Threshold for speech detection
             return speechAverage > 30 ? speechAverage : 0;
         }
 
