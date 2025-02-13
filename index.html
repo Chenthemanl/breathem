@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Breathem - Art by The Ricci</title>
+    <style>
+        /* Base styles */
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #FFFFFF;
+            padding: 20px;
+        }
+
+        .frame-container {
+            width: 100%;
+            max-width: 901px;
+            margin: auto;
+            position: relative;
+        }
+
+        .frame {
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.827%;
+            border: 2px solid #8F8F8F;
+            border-radius: calc(29 * 100vw / 901);
+            position: relative;
+            background-color: #FFFFFF;
+            animation: normalBreathing 5s ease-in-out infinite;
+            transition: border-color 2s ease;
+        }
+
+        .content-wrapper {
+            position: absolute;
+            top: 15.625%;
+            left: 0;
+            right: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .eyes-container {
+            display: flex;
+            justify-content: space-between;
+            width: 38.957%;
+            margin-bottom: 6.25%;
+        }
+
+        .eye {
+            width: calc(35 * 100vw / 901);
+            height: calc(34 * 100vw / 901);
+            max-width: 35px;
+            max-height: 34px;
+            background-color: #8F8F8F;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+
+        .mouth-container {
+            width: 57.27%;
+            height: auto;
+        }
+
+        /* Emotional state transitions */
+        .eye, .mouth-container path {
+            transition: background-color 1s ease, stroke 1s ease;
+        }
+
+        /* Stress level colors - subtle pink backgrounds */
+        .stress-level-1 { --stress-color: rgb(255, 250, 250); }
+        .stress-level-2 { --stress-color: rgb(255, 240, 240); }
+        .stress-level-3 { --stress-color: rgb(255, 228, 228); }
+        .stress-level-4 { --stress-color: rgb(255, 216, 216); }
+        .stress-level-5 { --stress-color: rgb(255, 200, 200); }
+        .stress-level-max { --stress-color: rgb(255, 180, 180); }
+
+        /* Breathing animations */
+        @keyframes normalBreathing {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.98); }
+        }
+
+        @keyframes deepBreathing {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.975); }
+        }
+
+        /* Blinking styles */
+        .blink {
+            height: 2px !important;
+        }
+
+        .slow-blink {
+            transition: height 0.3s;
+        }
+
+        /* Speech bubble styles */
+        .speech-bubble {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 2px solid #8F8F8F;
+            border-radius: 15px;
+            padding: 8px 12px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        /* Hide video elements */
+        #camera-feed, #detection-canvas {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="frame-container">
+        <div class="frame" id="breathing-frame">
+            <div class="content-wrapper">
+                <div class="eyes-container">
+                    <div class="eye" id="left-eye"></div>
+                    <div class="eye" id="right-eye"></div>
+                </div>
+                <div class="mouth-container">
+                    <svg id="mouth" width="100%" height="100%" viewBox="0 0 516 54" fill="none">
+                        <path id="mouth-path" d="M2 2C138.333 47 377.667 47 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden elements for functionality -->
+    <video id="camera-feed" autoplay playsinline muted></video>
+    <canvas id="detection-canvas"></canvas>
+    <audio id="meditation-audio" src="meditation.mp3"></audio>
+
+    <script>
+        // DOM elements
+        const frame = document.getElementById("breathing-frame");
+        const leftEye = document.getElementById("left-eye");
+        const rightEye = document.getElementById("right-eye");
+        const audio = document.getElementById("meditation-audio");
+        const mouthPath = document.getElementById("mouth-path");
+        const video = document.getElementById("camera-feed");
+        const canvas = document.getElementById("detection-canvas");
+
+        // State variables
+        let meditationActive = false;
+        let deepBreathingActive = false;
+        let animationFrame = null;
+        let lastIntensity = 0;
+        let stressLevel = 0;
+        let maxStressLevel = 5;
+        let lastStressTime = Date.now();
+
+        // Customize trigger words here
+        const triggerWords = {
+            high: ['furious', 'enraged', 'livid'], // Increases stress by 2
+            medium: ['angry', 'mad', 'upset'], // Increases stress by 1
+            low: ['annoyed', 'frustrated', 'irritated'] // Increases stress by 0.5
+        };
+
+        // Speech recognition setup
+        const initSpeechRecognition = () => {
+            if ('webkitSpeechRecognition' in window) {
+                const recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                recognition.onresult = (event) => {
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            const transcript = event.results[i][0].transcript.toLowerCase();
+                            checkForTriggerWords(transcript);
+                        }
+                    }
+                };
+
+                recognition.onend = () => {
+                    recognition.start();
+                };
+
+                recognition.start();
+            }
+        };
+
+        // Check transcript for trigger words
+        const checkForTriggerWords = (transcript) => {
+            // Check high intensity words
+            triggerWords.high.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(2);
+                }
+            });
+
+            // Check medium intensity words
+            triggerWords.medium.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(1);
+                }
+            });
+
+            // Check low intensity words
+            triggerWords.low.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(0.5);
+                }
+            });
+        };
+
+        // Increase stress level
+        const increaseStress = (amount) => {
+            lastStressTime = Date.now();
+            stressLevel = Math.min(maxStressLevel, stressLevel + amount);
+            updateStressVisuals();
+        };
+
+        // Reset stress level
+        const resetStress = () => {
+            stressLevel = 0;
+            updateStressVisuals();
+            showMessage("Feeling better now!");
+        };
+
+        // Update visual appearance based on stress level
+        const updateStressVisuals = () => {
+            const frame = document.querySelector('.frame');
+            frame.className = 'frame';
+            
+            if (stressLevel > 0) {
+                const level = Math.ceil(stressLevel);
+                frame.classList.add(`stress-level-${level}`);
+                
+                const stressColor = getComputedStyle(frame).getPropertyValue('--stress-color');
+                frame.style.borderColor = stressColor;
+                document.querySelectorAll('.eye').forEach(eye => {
+                    eye.style.backgroundColor = stressColor;
+                });
+                document.querySelector('#mouth-path').style.stroke = stressColor;
+            } else {
+                // Reset to original colors
+                frame.style.borderColor = '#8F8F8F';
+                document.querySelectorAll('.eye').forEach(eye => {
+                    eye.style.backgroundColor = '#8F8F8F';
+                });
+                document.querySelector('#mouth-path').style.stroke = '#8F8F8F';
+            }
+        };
+
+        // Show message in speech bubble
+        const showMessage = (text) => {
+            const bubble = document.createElement('div');
+            bubble.className = 'speech-bubble';
+            bubble.textContent = text;
+            
+            frame.appendChild(bubble);
+            
+            setTimeout(() => bubble.style.opacity = '1', 10);
+            setTimeout(() => {
+                bubble.style.opacity = '0';
+                setTimeout(() => bubble.remove(), 300);
+            }, 3000);
+        };
+
+        // Blinking animation
+        const blinkTypes = {
+            quick: { duration: 200, class: 'blink' },
+            slow: { duration: 300, class: 'blink slow-blink' }
+        };
+
+        const executeBlink = (type) => {
+            return new Promise((resolve) => {
+                const eyes = document.querySelectorAll('.eye');
+                const config = blinkTypes[type];
+                eyes.forEach(eye => eye.classList.add(config.class));
+                setTimeout(() => {
+                    eyes.forEach(eye => eye.classList.remove(config.class));
+                    resolve();
+                }, config.duration);
+            });
+        };
+
+        const blink = async () => {
+            const types = ['quick', 'quick', 'quick', 'slow'];
+            const selectedType = types[Math.floor(Math.random() * types.length)];
+            await executeBlink(selectedType);
+            
+            const minDelay = 21000;
+            const maxDelay = 29000;
+            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+            setTimeout(blink, nextBlinkDelay);
+        };
+
+        // Event listeners
+        leftEye.addEventListener("click", () => {
+            toggleMeditation();
+            resetStress(); // Immediately reset stress
+        });
+
+        rightEye.addEventListener("click", () => {
+            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
+            resetStress(); // Immediately reset stress
+        });
+
+        // Initialize
+        setTimeout(blink, Math.random() * 5000 + 3000);
+        initSpeechRecognition();
+
+        // Audio context and analyzer setup for meditation
+        let audioCtx = null;
+        let analyser = null;
+        let dataArray = null;
+
+        // Initialize audio system for meditation visualization
+        function initAudio() {
+            // Create new audio context if none exists
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            
+            // Configure analyzer for voice detection
+            analyser.fftSize = 512;
+            analyser.minDecibels = -65;
+            analyser.maxDecibels = -20;
+            analyser.smoothingTimeConstant = 0.3;
+            
+            // Connect audio elements
+            const source = audioCtx.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            
+            // Create data array for frequency analysis
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+
+        // Detect speech patterns in audio for mouth movement
+        function detectSpeech(frequencies) {
+            const sampleRate = audioCtx.sampleRate;
+            const binCount = frequencies.length;
+            
+            // Define frequency ranges for voice detection
+            const voiceStart = Math.floor(80 * binCount / sampleRate);
+            const voiceEnd = Math.floor(260 * binCount / sampleRate);
+            const musicLow = Math.floor(50 * binCount / sampleRate);
+            const musicHigh = Math.floor(1500 * binCount / sampleRate);
+            
+            // Calculate average energy in voice range
+            let voiceSum = 0;
+            for (let i = voiceStart; i < voiceEnd; i++) {
+                voiceSum += frequencies[i];
+            }
+            const voiceAvg = voiceSum / (voiceEnd - voiceStart);
+            
+            // Calculate average energy in music range
+            let musicSum = 0;
+            let musicCount = 0;
+            for (let i = musicLow; i < musicHigh; i++) {
+                if (i < voiceStart || i > voiceEnd) {
+                    musicSum += frequencies[i];
+                    musicCount++;
+                }
+            }
+            const musicAvg = musicSum / musicCount;
+            
+            // Determine if voice is present
+            const voiceStrength = voiceAvg / musicAvg;
+            const voiceThreshold = 30;
+            const ratioThreshold = 1.2;
+            
+            if (voiceAvg > voiceThreshold && voiceStrength > ratioThreshold) {
+                return Math.min(100, voiceAvg * 1.5);
+            }
+            return 0;
+        }
+
+        // Update mouth shape based on audio analysis
+        function updateMouthShape(value = 0) {
+            const baseControl = 47;
+            const minControl = 25;
+            
+            // Smooth the transition between values
+            value = lastIntensity * 0.4 + value * 0.6;
+            lastIntensity = value;
+            
+            // Calculate mouth curve parameters
+            const normalizedValue = Math.pow(value / 100, 1.2);
+            const controlY = baseControl - (normalizedValue * (baseControl - minControl));
+            
+            const baseX = 2;
+            const narrowing = Math.min(12, value / 4);
+            const startX = baseX + narrowing;
+            const endX = 514 - narrowing;
+            
+            const leftControl = 138.333 + (narrowing / 2);
+            const rightControl = 377.667 - (narrowing / 2);
+            
+            // Update SVG path for mouth
+            mouthPath.setAttribute("d", 
+                `M${startX} 2C${leftControl} ${controlY} ${rightControl} ${controlY} ${endX} 2`
+            );
+        }
+
+        // Start audio visualization for meditation
+        function startVisualization() {
+            if (!audioCtx) initAudio();
+            updateAudioVisualization();
+        }
+
+        // Stop audio visualization
+        function stopVisualization() {
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+            updateMouthShape(0);
+            lastIntensity = 0;
+        }
+
+        // Main audio visualization loop
+        function updateAudioVisualization() {
+            if (!meditationActive) return;
+            
+            // Get current frequency data
+            analyser.getByteFrequencyData(dataArray);
+            const speechIntensity = detectSpeech(dataArray);
+            
+            // Update mouth shape based on speech intensity
+            const scaledIntensity = Math.min(100, speechIntensity * 1.8);
+            updateMouthShape(scaledIntensity);
+            
+            // Continue the animation loop
+            animationFrame = requestAnimationFrame(updateAudioVisualization);
+        }
+
+        // Toggle meditation state
+        function toggleMeditation() {
+            if (meditationActive) {
+                // Stop meditation
+                audio.pause();
+                audio.currentTime = 0;
+                meditationActive = false;
+                stopVisualization();
+            } else {
+                // Start meditation
+                meditationActive = true;
+                audio.play();
+                startVisualization();
+            }
+        }
+
+        // Change breathing animation pattern
+        function changeBreathingPattern(animation, duration = 120000) {
+            if (deepBreathingActive) return;
+            deepBreathingActive = true;
+            
+            // Reset and start new animation
+            frame.style.animation = 'none';
+            frame.offsetHeight; // Trigger reflow
+            frame.style.animation = animation;
+
+            // Return to normal breathing after duration
+            setTimeout(() => {
+                frame.style.animation = "normalBreathing 5s ease-in-out infinite";
+                deepBreathingActive = false;
+            }, duration);
+        }
+
+    </script>
+</body>
+</html>
