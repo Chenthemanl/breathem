@@ -3,7 +3,7 @@
 <head>
     <title>Breathem - Art by The Ricci</title>
     <style>
-        /* Core layout styles */
+        /* Base layout styles for centering and overall structure */
         body {
             display: flex;
             justify-content: center;
@@ -14,6 +14,7 @@
             padding: 20px;
         }
 
+        /* Container that maintains aspect ratio and maximum width */
         .frame-container {
             width: 100%;
             max-width: 901px;
@@ -21,6 +22,7 @@
             position: relative;
         }
 
+        /* Main frame element with smooth transitions and breathing animation */
         .frame {
             width: 100%;
             height: 0;
@@ -31,9 +33,10 @@
             background-color: #FFFFFF;
             animation: normalBreathing 5s ease-in-out infinite;
             transition: background-color 2s ease;
-            cursor: pointer; /* Make frame clickable */
+            cursor: pointer;
         }
 
+        /* Wrapper for facial features with click-through behavior */
         .content-wrapper {
             position: absolute;
             top: 15.625%;
@@ -42,17 +45,19 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            pointer-events: none; /* Let clicks pass through to frame */
+            pointer-events: none;
         }
 
+        /* Container for eyes with restored click behavior */
         .eyes-container {
             display: flex;
             justify-content: space-between;
             width: 38.957%;
             margin-bottom: 6.25%;
-            pointer-events: auto; /* Re-enable clicks for eyes */
+            pointer-events: auto;
         }
 
+        /* Individual eye styling */
         .eye {
             width: calc(35 * 100vw / 901);
             height: calc(34 * 100vw / 901);
@@ -65,12 +70,13 @@
             cursor: pointer;
         }
 
+        /* Mouth sizing */
         .mouth-container {
             width: 57.27%;
             height: auto;
         }
 
-        /* Stress level colors - from white to pink */
+        /* Stress level colors with smooth transitions from white to pink */
         .stress-level-1 { --stress-color: rgb(255, 250, 250); }
         .stress-level-2 { --stress-color: rgb(255, 240, 240); }
         .stress-level-3 { --stress-color: rgb(255, 228, 228); }
@@ -78,7 +84,7 @@
         .stress-level-5 { --stress-color: rgb(255, 200, 200); }
         .stress-level-max { --stress-color: rgb(255, 180, 180); }
 
-        /* Breathing animations */
+        /* Breathing animations for normal and deep breathing states */
         @keyframes normalBreathing {
             0%, 100% { transform: scale(1); }
             50% { transform: scale(0.98); }
@@ -98,7 +104,7 @@
             transition: height 0.3s;
         }
 
-        /* Message bubble styling */
+        /* Speech bubble for messages */
         .speech-bubble {
             position: absolute;
             top: -60px;
@@ -133,33 +139,64 @@
         </div>
     </div>
 
-    <audio id="meditation-audio" src="10-Minute Guided Meditation_ Self-Love  SELF (mp3cut.net).mp3"></audio>
+    <audio id="meditation-audio" src="meditation.mp3"></audio>
 
     <script>
-        // DOM elements that we'll interact with throughout the application
+        // DOM elements for frequent access
         const frame = document.getElementById("breathing-frame");
         const leftEye = document.getElementById("left-eye");
         const rightEye = document.getElementById("right-eye");
         const audio = document.getElementById("meditation-audio");
         const mouthPath = document.getElementById("mouth-path");
 
-        // Core state variables that track Breathem's current state
+        // Core state management
         let meditationActive = false;
         let deepBreathingActive = false;
         let animationFrame = null;
         let lastIntensity = 0;
         let stressLevel = 0;
         let maxStressLevel = 5;
-        let lastStressResetTime = Date.now();  // New: Tracks when stress was last reset
+        let lastStressResetTime = Date.now();
 
-        // Words that trigger stress responses in Breathem
+        // Wake Lock system for preventing sleep
+        let wakeLock = null;
+        let wakeLockEnabled = false;
+
+        // Words that trigger stress responses
         const triggerWords = {
-            high: ['unlock', 'biggest'],      // Increases stress by 2
-            medium: ['end-to-end', 'chef'],   // Increases stress by 1
-            low: ['exciting']                 // Increases stress by 0.5
+            high: ['unlock', 'biggest'],      // +2 stress
+            medium: ['end-to-end', 'chef'],   // +1 stress
+            low: ['exciting']                 // +0.5 stress
         };
 
-        // Initialize speech recognition system with enhanced sensitivity
+        // Initialize wake lock to prevent sleep
+        async function manageSleepPrevention() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLockEnabled = true;
+                    
+                    // Reacquire wake lock when tab becomes visible
+                    document.addEventListener('visibilitychange', async () => {
+                        if (wakeLockEnabled && document.visibilityState === 'visible') {
+                            wakeLock = await navigator.wakeLock.request('screen');
+                        }
+                    });
+
+                    // Periodic wake lock renewal
+                    setInterval(async () => {
+                        if (wakeLockEnabled && !wakeLock) {
+                            wakeLock = await navigator.wakeLock.request('screen');
+                        }
+                    }, 50000);
+
+                } catch (err) {
+                    console.log('Wake Lock request failed - device may sleep');
+                }
+            }
+        }
+
+        // Initialize enhanced speech recognition
         const initSpeechRecognition = () => {
             if ('webkitSpeechRecognition' in window) {
                 const recognition = new webkitSpeechRecognition();
@@ -192,7 +229,7 @@
             }
         };
 
-        // Check transcript for stress-inducing words
+        // Check speech for trigger words
         const checkForTriggerWords = (transcript) => {
             triggerWords.high.forEach(word => {
                 if (transcript.includes(word)) {
@@ -213,14 +250,14 @@
             });
         };
 
-        // Increase stress level and update visual state
+        // Manage stress levels
         const increaseStress = (amount) => {
             stressLevel = Math.min(maxStressLevel, stressLevel + amount);
             updateStressVisuals();
-            lastStressResetTime = Date.now();  // Update reset timer when stress increases
+            lastStressResetTime = Date.now();
         };
 
-        // New: Check if 24 hours have passed to auto-reset stress
+        // Check for 24-hour stress reset
         function checkStressTimeout() {
             const now = Date.now();
             const hoursPassed = (now - lastStressResetTime) / (1000 * 60 * 60);
@@ -232,24 +269,22 @@
             }
         }
 
-        // Improved reset stress function with proper visual updates
+        // Reset stress state
         const resetStress = () => {
-            const wasStressed = stressLevel > 0;  // Check if we were stressed before resetting
+            const wasStressed = stressLevel > 0;
             stressLevel = 0;
             
-            // Reset all stress-related styling while maintaining animations
             const frame = document.querySelector('.frame');
             frame.className = 'frame';
             frame.style.backgroundColor = '#FFFFFF';
             frame.style.animation = frame.style.animation;
             
-            // Only show message if we were actually stressed
             if (wasStressed) {
                 showMessage("Thanks mate! Feeling much better now!");
             }
         };
 
-        // Update visual appearance based on stress level
+        // Update visual stress indicators
         const updateStressVisuals = () => {
             const frame = document.querySelector('.frame');
             frame.className = 'frame';
@@ -272,7 +307,7 @@
             }
         };
 
-        // Display messages in speech bubble
+        // Show messages in speech bubble
         const showMessage = (text) => {
             const bubble = document.createElement('div');
             bubble.className = 'speech-bubble';
@@ -287,7 +322,7 @@
             }, 3000);
         };
 
-        // Improved blinking system with separate class handling
+        // Blinking animation system
         const blinkTypes = {
             quick: { duration: 200, classes: ['blink'] },
             slow: { duration: 300, classes: ['blink', 'slow-blink'] }
@@ -326,7 +361,7 @@
             setTimeout(blink, nextBlinkDelay);
         }
 
-        // Audio system setup and control
+        // Audio system initialization
         let audioCtx = null;
         let analyser = null;
         let dataArray = null;
@@ -345,6 +380,7 @@
             dataArray = new Uint8Array(analyser.frequencyBinCount);
         }
 
+        // Audio visualization control
         function startVisualization() {
             if (!audioCtx) initAudio();
             updateAudioVisualization();
@@ -371,6 +407,7 @@
             animationFrame = requestAnimationFrame(updateAudioVisualization);
         }
 
+        // Speech detection in audio
         function detectSpeech(frequencies) {
             const sampleRate = audioCtx.sampleRate;
             const binCount = frequencies.length;
@@ -407,7 +444,7 @@
             return 0;
         }
 
-        // Sophisticated mouth animation system
+        // Mouth animation control with smooth transitions
         function updateMouthShape(value = 0) {
             const baseControl = 47;
             const minControl = 25;
@@ -431,7 +468,7 @@
             );
         }
 
-        // Meditation state control
+        // Meditation control functions
         function toggleMeditation() {
             if (meditationActive) {
                 audio.pause();
@@ -445,13 +482,13 @@
             }
         }
 
-        // Breathing animation control
+        // Breathing pattern management
         function changeBreathingPattern(animation, duration = 120000) {
             if (deepBreathingActive) return;
             deepBreathingActive = true;
             
             frame.style.animation = 'none';
-            frame.offsetHeight;
+            frame.offsetHeight; // Trigger reflow
             frame.style.animation = animation;
 
             setTimeout(() => {
@@ -460,13 +497,14 @@
             }, duration);
         }
 
-        // Event Listeners
+        // Event listener for frame clicks
         frame.addEventListener("click", (event) => {
             if (stressLevel > 0 && !event.target.classList.contains('eye')) {
                 resetStress();
             }
         });
 
+        // Event listeners for eye clicks
         leftEye.addEventListener("click", (event) => {
             event.stopPropagation();
             
@@ -485,15 +523,20 @@
             changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
         });
 
-        // Initialize everything
+        // Initialize all systems
         setTimeout(blink, Math.random() * 5000 + 3000);
         initSpeechRecognition();
-        setInterval(checkStressTimeout, 60000); // Check for 24-hour reset every minute
+        setInterval(checkStressTimeout, 60000);
+        manageSleepPrevention();
 
-        // Cleanup on page close
+        // Cleanup when page is closed
         window.addEventListener('beforeunload', () => {
             if (audioCtx) {
                 audioCtx.close();
+            }
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLockEnabled = false;
             }
         });
     </script>
