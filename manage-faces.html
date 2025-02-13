@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manage Known Faces - Breathem</title>
+    <!-- Load TensorFlow.js and face-api.js for face detection -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .face-input {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+
+        .preview-container {
+            width: 200px;
+            height: 200px;
+            border: 2px dashed #ccc;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #imagePreview {
+            max-width: 100%;
+            max-height: 100%;
+            display: none;
+        }
+
+        .known-faces {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .face-card {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .face-card img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #8F8F8F;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #7F7F7F;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .error {
+            color: #ff4444;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .success {
+            color: #44aa44;
+            margin: 10px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Manage Known Faces</h1>
+            <p>Add and manage faces that Breathem should recognize</p>
+        </div>
+
+        <div class="face-input">
+            <h2>Add New Face</h2>
+            <input type="text" id="personName" placeholder="Enter person's name">
+            <input type="file" id="photoInput" accept="image/*" style="display: none">
+            <button onclick="document.getElementById('photoInput').click()">
+                Choose Photo
+            </button>
+            <div class="preview-container">
+                <img id="imagePreview" alt="Preview">
+            </div>
+            <button onclick="trainFace()">Save Face</button>
+            <div id="errorMessage" class="error"></div>
+            <div id="successMessage" class="success"></div>
+        </div>
+
+        <div class="known-faces" id="knownFacesContainer">
+            <!-- Known faces will be displayed here -->
+        </div>
+    </div>
+
+    <script>
+        // Initialize face-api.js
+        async function initializeFaceAPI() {
+            try {
+                await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
+                await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
+                await faceapi.nets.ssdMobilenetv1.loadFromUri('/models');
+                console.log('Face recognition models loaded');
+            } catch (error) {
+                console.error('Error loading face models:', error);
+                showError('Error loading face recognition. Please refresh the page.');
+            }
+        }
+
+        // Handle file selection and preview
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Train and save a new face
+        async function trainFace() {
+            const nameInput = document.getElementById('personName');
+            const photoInput = document.getElementById('photoInput');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                showError('Please enter a name');
+                return;
+            }
+
+            if (!photoInput.files || !photoInput.files[0]) {
+                showError('Please select a photo');
+                return;
+            }
+
+            try {
+                const img = await faceapi.bufferToImage(photoInput.files[0]);
+                const detection = await faceapi.detectSingleFace(img)
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+
+                if (detection) {
+                    // Get existing faces from localStorage
+                    let knownFaces = JSON.parse(localStorage.getItem('knownFaces') || '{}');
+                    
+                    // Add new face
+                    knownFaces[name] = {
+                        descriptor: Array.from(detection.descriptor),
+                        image: img.src,
+                        lastGreeting: 0
+                    };
+
+                    // Save to localStorage
+                    localStorage.setItem('knownFaces', JSON.stringify(knownFaces));
+                    
+                    // Clear form and show success
+                    nameInput.value = '';
+                    photoInput.value = '';
+                    document.getElementById('imagePreview').style.display = 'none';
+                    showSuccess(`Successfully saved ${name}'s face!`);
+                    
+                    // Refresh the display
+                    displayKnownFaces();
+                } else {
+                    showError('No face detected in the photo. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error training face:', error);
+                showError('Error saving face. Please try again.');
+            }
+        }
+
+        // Display all known faces
+        function displayKnownFaces() {
+            const container = document.getElementById('knownFacesContainer');
+            container.innerHTML = '';
+            
+            const knownFaces = JSON.parse(localStorage.getItem('knownFaces') || '{}');
+            
+            for (const [name, data] of Object.entries(knownFaces)) {
+                const card = document.createElement('div');
+                card.className = 'face-card';
+                
+                card.innerHTML = `
+                    <img src="${data.image}" alt="${name}">
+                    <h3>${name}</h3>
+                    <button onclick="deleteFace('${name}')">Remove</button>
+                `;
+                
+                container.appendChild(card);
+            }
+        }
+
+        // Delete a face
+        function deleteFace(name) {
+            if (confirm(`Are you sure you want to remove ${name}?`)) {
+                let knownFaces = JSON.parse(localStorage.getItem('knownFaces') || '{}');
+                delete knownFaces[name];
+                localStorage.setItem('knownFaces', JSON.stringify(knownFaces));
+                displayKnownFaces();
+                showSuccess(`Removed ${name} from known faces`);
+            }
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize page
+        initializeFaceAPI().then(() => {
+            displayKnownFaces();
+        });
+    </script>
+</body>
+</html>
