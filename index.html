@@ -222,8 +222,12 @@
         // Reset stress level and show calming message
         const resetStress = () => {
             stressLevel = 0;
-            updateStressVisuals();
-            showMessage("Thanks mate! Feeling much better now!");
+            const frame = document.querySelector('.frame');
+            frame.className = 'frame';  // Reset class
+            frame.style.backgroundColor = '#FFFFFF';  // Explicitly reset background color
+            if (stressLevel > 0) {  // Only show message if we were actually stressed
+                showMessage("Thanks mate! Feeling much better now!");
+            }
         };
 
         // Update visual appearance based on stress level
@@ -269,17 +273,29 @@
 
         // Blinking animation system
         const blinkTypes = {
-            quick: { duration: 200, class: 'blink' },
-            slow: { duration: 300, class: 'blink slow-blink' }
+            quick: { duration: 200, classes: ['blink'] },
+            slow: { duration: 300, classes: ['blink', 'slow-blink'] }
         };
 
         const executeBlink = (type) => {
             return new Promise((resolve) => {
                 const eyes = document.querySelectorAll('.eye');
                 const config = blinkTypes[type];
-                eyes.forEach(eye => eye.classList.add(config.class));
+                
+                // Add each class separately
+                eyes.forEach(eye => {
+                    config.classes.forEach(className => {
+                        eye.classList.add(className);
+                    });
+                });
+        
                 setTimeout(() => {
-                    eyes.forEach(eye => eye.classList.remove(config.class));
+                    // Remove each class separately
+                    eyes.forEach(eye => {
+                        config.classes.forEach(className => {
+                            eye.classList.remove(className);
+                        });
+                    });
                     resolve();
                 }, config.duration);
             });
