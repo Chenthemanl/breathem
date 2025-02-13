@@ -136,40 +136,40 @@
     <audio id="meditation-audio" src="10-Minute Guided Meditation_ Self-Love  SELF (mp3cut.net).mp3"></audio>
 
     <script>
-        // DOM elements
+        // DOM elements that we'll interact with throughout the application
         const frame = document.getElementById("breathing-frame");
         const leftEye = document.getElementById("left-eye");
         const rightEye = document.getElementById("right-eye");
         const audio = document.getElementById("meditation-audio");
         const mouthPath = document.getElementById("mouth-path");
 
-        // State variables
+        // Core state variables that track Breathem's current state
         let meditationActive = false;
         let deepBreathingActive = false;
         let animationFrame = null;
         let lastIntensity = 0;
         let stressLevel = 0;
         let maxStressLevel = 5;
+        let lastStressResetTime = Date.now();  // New: Tracks when stress was last reset
 
-        // Trigger words that affect Breathem's stress level
+        // Words that trigger stress responses in Breathem
         const triggerWords = {
             high: ['unlock', 'biggest'],      // Increases stress by 2
             medium: ['end-to-end', 'chef'],   // Increases stress by 1
             low: ['exciting']                 // Increases stress by 0.5
         };
 
-        // Enhanced speech recognition with better sensitivity
+        // Initialize speech recognition system with enhanced sensitivity
         const initSpeechRecognition = () => {
             if ('webkitSpeechRecognition' in window) {
                 const recognition = new webkitSpeechRecognition();
                 recognition.continuous = true;
                 recognition.interimResults = true;
                 recognition.lang = 'en-US';
-                recognition.maxAlternatives = 3; // Get multiple interpretations
+                recognition.maxAlternatives = 3;
 
                 recognition.onresult = (event) => {
                     for (let i = event.resultIndex; i < event.results.length; i++) {
-                        // Check all alternatives for better word detection
                         for (let j = 0; j < event.results[i].length; j++) {
                             const transcript = event.results[i][j].transcript.toLowerCase();
                             checkForTriggerWords(transcript);
@@ -178,7 +178,7 @@
                 };
 
                 recognition.onend = () => {
-                    recognition.start(); // Keep recognition active
+                    recognition.start();
                 };
 
                 recognition.onerror = (event) => {
@@ -192,7 +192,7 @@
             }
         };
 
-        // Check for trigger words in speech
+        // Check transcript for stress-inducing words
         const checkForTriggerWords = (transcript) => {
             triggerWords.high.forEach(word => {
                 if (transcript.includes(word)) {
@@ -213,19 +213,38 @@
             });
         };
 
-        // Increase stress level with smooth transitions
+        // Increase stress level and update visual state
         const increaseStress = (amount) => {
             stressLevel = Math.min(maxStressLevel, stressLevel + amount);
             updateStressVisuals();
+            lastStressResetTime = Date.now();  // Update reset timer when stress increases
         };
 
-        // Reset stress level and show calming message
+        // New: Check if 24 hours have passed to auto-reset stress
+        function checkStressTimeout() {
+            const now = Date.now();
+            const hoursPassed = (now - lastStressResetTime) / (1000 * 60 * 60);
+            
+            if (hoursPassed >= 24 && stressLevel > 0) {
+                resetStress();
+                lastStressResetTime = now;
+                showMessage("Ah, feeling refreshed after a good rest!");
+            }
+        }
+
+        // Improved reset stress function with proper visual updates
         const resetStress = () => {
+            const wasStressed = stressLevel > 0;  // Check if we were stressed before resetting
             stressLevel = 0;
+            
+            // Reset all stress-related styling while maintaining animations
             const frame = document.querySelector('.frame');
-            frame.className = 'frame';  // Reset class
-            frame.style.backgroundColor = '#FFFFFF';  // Explicitly reset background color
-            if (stressLevel > 0) {  // Only show message if we were actually stressed
+            frame.className = 'frame';
+            frame.style.backgroundColor = '#FFFFFF';
+            frame.style.animation = frame.style.animation;
+            
+            // Only show message if we were actually stressed
+            if (wasStressed) {
                 showMessage("Thanks mate! Feeling much better now!");
             }
         };
@@ -239,24 +258,21 @@
                 const level = Math.ceil(stressLevel);
                 frame.classList.add(`stress-level-${level}`);
                 
-                // Apply stress color to background only
                 const stressColor = getComputedStyle(frame).getPropertyValue('--stress-color');
                 frame.style.backgroundColor = stressColor;
                 
-                // Keep features gray
                 frame.style.borderColor = '#8F8F8F';
                 document.querySelectorAll('.eye').forEach(eye => {
                     eye.style.backgroundColor = '#8F8F8F';
                 });
                 document.querySelector('#mouth-path').style.stroke = '#8F8F8F';
             } else {
-                // Reset to original colors
                 frame.style.backgroundColor = '#FFFFFF';
                 frame.style.borderColor = '#8F8F8F';
             }
         };
 
-        // Display message in speech bubble
+        // Display messages in speech bubble
         const showMessage = (text) => {
             const bubble = document.createElement('div');
             bubble.className = 'speech-bubble';
@@ -271,7 +287,7 @@
             }, 3000);
         };
 
-        // Blinking animation system
+        // Improved blinking system with separate class handling
         const blinkTypes = {
             quick: { duration: 200, classes: ['blink'] },
             slow: { duration: 300, classes: ['blink', 'slow-blink'] }
@@ -282,15 +298,13 @@
                 const eyes = document.querySelectorAll('.eye');
                 const config = blinkTypes[type];
                 
-                // Add each class separately
                 eyes.forEach(eye => {
                     config.classes.forEach(className => {
                         eye.classList.add(className);
                     });
                 });
-        
+
                 setTimeout(() => {
-                    // Remove each class separately
                     eyes.forEach(eye => {
                         config.classes.forEach(className => {
                             eye.classList.remove(className);
@@ -312,7 +326,7 @@
             setTimeout(blink, nextBlinkDelay);
         }
 
-        // Audio context setup for meditation
+        // Audio system setup and control
         let audioCtx = null;
         let analyser = null;
         let dataArray = null;
@@ -331,7 +345,6 @@
             dataArray = new Uint8Array(analyser.frequencyBinCount);
         }
 
-        // Audio visualization control
         function startVisualization() {
             if (!audioCtx) initAudio();
             updateAudioVisualization();
@@ -358,7 +371,6 @@
             animationFrame = requestAnimationFrame(updateAudioVisualization);
         }
 
-        // Detect speech patterns in audio
         function detectSpeech(frequencies) {
             const sampleRate = audioCtx.sampleRate;
             const binCount = frequencies.length;
@@ -395,36 +407,31 @@
             return 0;
         }
 
-        // Update mouth animation
+        // Sophisticated mouth animation system
         function updateMouthShape(value = 0) {
             const baseControl = 47;
             const minControl = 25;
             
-            // Smooth transition between values
             value = lastIntensity * 0.4 + value * 0.6;
             lastIntensity = value;
             
-            // Calculate mouth curve parameters
             const normalizedValue = Math.pow(value / 100, 1.2);
             const controlY = baseControl - (normalizedValue * (baseControl - minControl));
             
-            // Calculate mouth width adjustment
             const baseX = 2;
             const narrowing = Math.min(12, value / 4);
             const startX = baseX + narrowing;
             const endX = 514 - narrowing;
             
-            // Adjust control points for natural curve
             const leftControl = 138.333 + (narrowing / 2);
             const rightControl = 377.667 - (narrowing / 2);
             
-            // Apply the new mouth shape
             mouthPath.setAttribute("d", 
                 `M${startX} 2C${leftControl} ${controlY} ${rightControl} ${controlY} ${endX} 2`
             );
         }
 
-        // Meditation control
+        // Meditation state control
         function toggleMeditation() {
             if (meditationActive) {
                 audio.pause();
@@ -438,62 +445,52 @@
             }
         }
 
-        // Breathing pattern control
+        // Breathing animation control
         function changeBreathingPattern(animation, duration = 120000) {
             if (deepBreathingActive) return;
             deepBreathingActive = true;
             
-            // Reset and start new animation
             frame.style.animation = 'none';
-            frame.offsetHeight; // Trigger reflow
+            frame.offsetHeight;
             frame.style.animation = animation;
 
-            // Return to normal breathing after duration
             setTimeout(() => {
                 frame.style.animation = "normalBreathing 5s ease-in-out infinite";
                 deepBreathingActive = false;
             }, duration);
         }
 
-        // Frame click handler - only works when stressed
+        // Event Listeners
         frame.addEventListener("click", (event) => {
-            // Only allow stress reduction if stressed and not clicking eyes
             if (stressLevel > 0 && !event.target.classList.contains('eye')) {
                 resetStress();
             }
         });
 
-        // Left eye - meditation and stress reset
         leftEye.addEventListener("click", (event) => {
-            event.stopPropagation(); // Prevent frame click
+            event.stopPropagation();
             
-            if (stressLevel > 0) {  // Only show message when reducing stress
-                stressLevel = 0;
-                frame.className = 'frame';
-                showMessage("Thanks mate! Feeling much better now!");
+            if (stressLevel > 0) {
+                resetStress();
             }
-            
-            toggleMeditation(); // Always toggle meditation regardless of stress
+            toggleMeditation();
         });
-        
-        // Right eye - breathing pattern and stress reset
+
         rightEye.addEventListener("click", (event) => {
-            event.stopPropagation(); // Prevent frame click
+            event.stopPropagation();
             
-            if (stressLevel > 0) {  // Only show message when reducing stress
-                stressLevel = 0;
-                frame.className = 'frame';
-                showMessage("Thanks mate! Feeling much better now!");
+            if (stressLevel > 0) {
+                resetStress();
             }
-            
-            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000); // Always trigger breathing pattern
+            changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
         });
 
-        // Initialize systems
-        setTimeout(blink, Math.random() * 5000 + 3000); // Start blinking with random delay
-        initSpeechRecognition(); // Start listening for trigger words
+        // Initialize everything
+        setTimeout(blink, Math.random() * 5000 + 3000);
+        initSpeechRecognition();
+        setInterval(checkStressTimeout, 60000); // Check for 24-hour reset every minute
 
-        // Clean up resources when page is closed
+        // Cleanup on page close
         window.addEventListener('beforeunload', () => {
             if (audioCtx) {
                 audioCtx.close();
