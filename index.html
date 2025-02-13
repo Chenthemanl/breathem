@@ -222,7 +222,7 @@
             const musicAvg = musicSum / musicCount;
             
             // Only return value if voice is significantly stronger than music
-            if (voiceAvg > musicAvg * 1.2 && voiceAvg > 35) {
+            if (voiceAvg > musicAvg * 1.5 && voiceAvg > 45) {
                 return voiceAvg;
             }
             return 0;
