@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mindful Face</title>
+    <title>Mindul Face</title>
     <style>
         body {
             display: flex;
@@ -83,7 +83,7 @@
         }
 
         #mouth-path {
-            transition: all 0.2s ease;
+            transition: all 0.15s ease; /* Faster transition */
         }
     </style>
 </head>
@@ -97,7 +97,7 @@
                 </div>
                 <div class="mouth-container">
                     <svg id="mouth" width="100%" height="100%" viewBox="0 0 516 54" fill="none">
-                        <path id="mouth-path" d="M2 2C138.333 52 377.667 52 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
+                        <path id="mouth-path" d="M2 2C138.333 47 377.667 47 514 2" stroke="#8F8F8F" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </div>
             </div>
@@ -146,10 +146,15 @@
         }
 
         function updateMouthShape(value = 0) {
-            // Ensure value is between 0 and 100
-            const intensity = Math.max(0, Math.min(100, value));
-            // Map intensity to control points (52 is default, 2 is max movement)
-            const controlY = 52 - (intensity * 0.5);
+            // Starting from a more curved position (47)
+            // and moving to a less extreme maximum
+            const baseControl = 47; // Default curve position
+            const minControl = 20;  // Maximum movement point
+            
+            // Non-linear scaling for more natural movement
+            const normalizedValue = Math.pow(value / 100, 1.5); // More responsive to small changes
+            const controlY = baseControl - (normalizedValue * (baseControl - minControl));
+            
             mouthPath.setAttribute("d", `M2 2C138.333 ${controlY} 377.667 ${controlY} 514 2`);
         }
 
@@ -160,20 +165,44 @@
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 32; // Smaller size for better performance
+            analyser.fftSize = 1024; // Larger FFT for better frequency resolution
+            analyser.minDecibels = -70;
+            analyser.maxDecibels = -30;
+            analyser.smoothingTimeConstant = 0.4;
+
             const source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
             analyser.connect(audioCtx.destination);
             dataArray = new Uint8Array(analyser.frequencyBinCount);
         }
 
+        function detectSpeech(frequencies) {
+            // Focus on frequency range most common in speech (roughly 85-255 Hz)
+            const speechStart = Math.floor(85 * frequencies.length / audioCtx.sampleRate);
+            const speechEnd = Math.floor(255 * frequencies.length / audioCtx.sampleRate);
+            
+            let speechSum = 0;
+            let count = 0;
+            
+            for (let i = speechStart; i < speechEnd; i++) {
+                speechSum += frequencies[i];
+                count++;
+            }
+            
+            const speechAverage = speechSum / count;
+            // Threshold for speech detection
+            return speechAverage > 30 ? speechAverage : 0;
+        }
+
         function updateAudioVisualization() {
             if (!meditationActive) return;
             
             analyser.getByteFrequencyData(dataArray);
-            const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
-            // Scale the average to a more visible range
-            updateMouthShape(average * 1.5);
+            const speechIntensity = detectSpeech(dataArray);
+            
+            // Scale the speech intensity to mouth movement
+            const scaledIntensity = Math.min(100, speechIntensity * 2);
+            updateMouthShape(scaledIntensity);
             
             animationFrame = requestAnimationFrame(updateAudioVisualization);
         }
@@ -209,7 +238,7 @@
             deepBreathingActive = true;
             
             frame.style.animation = 'none';
-            frame.offsetHeight; // Trigger reflow
+            frame.offsetHeight;
             frame.style.animation = animation;
 
             setTimeout(() => {
