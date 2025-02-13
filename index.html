@@ -83,7 +83,7 @@
         }
 
         #mouth-path {
-            transition: all 0.13s ease; /* Faster response time */
+            transition: all 0.08s ease; /* Faster response time */
         }
     </style>
 </head>
@@ -176,7 +176,7 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512; // Smaller for less delay
-            analyser.minDecibels = -70; // More sensitive
+            analyser.minDecibels = -90; // More sensitive
             analyser.maxDecibels = -20; // Pick up clearer sounds
             analyser.smoothingTimeConstant = 0.2; // Less smoothing for faster response
 
