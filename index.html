@@ -155,7 +155,7 @@
             
             // Smoother narrowing
             const baseX = 2;
-            const narrowing = Math.min(12, value / 4); // More subtle narrowing
+            const narrowing = Math.min(20, value / 4); // More subtle narrowing
             const startX = baseX + narrowing;
             const endX = 514 - narrowing;
             
@@ -176,7 +176,7 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512; // Smaller for less delay
-            analyser.minDecibels = -90; // More sensitive
+            analyser.minDecibels = -120; // More sensitive
             analyser.maxDecibels = -20; // Pick up clearer sounds
             analyser.smoothingTimeConstant = 0.2; // Less smoothing for faster response
 
