@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mindfl Face</title>
+    <title>Mindful Face</title>
     <style>
         body {
             display: flex;
@@ -83,7 +83,7 @@
         }
 
         #mouth-path {
-            transition: all 0.2s ease; /* Faster response time */
+            transition: all 0.13s ease; /* Faster response time */
         }
     </style>
 </head>
@@ -176,9 +176,9 @@
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512; // Smaller for less delay
-            analyser.minDecibels = -65; // More sensitive
+            analyser.minDecibels = -70; // More sensitive
             analyser.maxDecibels = -20; // Pick up clearer sounds
-            analyser.smoothingTimeConstant = 0.35; // Less smoothing for faster response
+            analyser.smoothingTimeConstant = 0.2; // Less smoothing for faster response
 
             const source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
@@ -193,7 +193,7 @@
             
             // Calculate bins for human voice frequencies
             const voiceStart = Math.floor(85 * binCount / sampleRate);  // 85 Hz
-            const voiceEnd = Math.floor(180 * binCount / sampleRate);   // 255 Hz
+            const voiceEnd = Math.floor(230 * binCount / sampleRate);   // 255 Hz
             
             // Calculate bins for typical music frequencies
             const musicLow = Math.floor(60 * binCount / sampleRate);    // 60 Hz
@@ -222,7 +222,7 @@
             const musicAvg = musicSum / musicCount;
             
             // Only return value if voice is significantly stronger than music
-            if (voiceAvg > musicAvg * 1.5 && voiceAvg > 45) {
+            if (voiceAvg > musicAvg * 1.2 && voiceAvg > 35) {
                 return voiceAvg;
             }
             return 0;
