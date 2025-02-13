@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Mindful Face</title>
+    <title>MindfulFace</title>
     <style>
         body {
             display: flex;
@@ -83,7 +83,7 @@
         }
 
         #mouth-path {
-            transition: all 0.08s ease; /* Faster response time */
+            transition: all 0.2s ease;
         }
     </style>
 </head>
@@ -115,6 +115,7 @@
         let meditationActive = false;
         let deepBreathingActive = false;
         let animationFrame = null;
+        let lastIntensity = 0;
 
         // Blinking logic
         const blinkTypes = {
@@ -147,19 +148,20 @@
 
         function updateMouthShape(value = 0) {
             const baseControl = 47;
-            const minControl = 25; // Less extreme movement
+            const minControl = 25;
             
-            // More responsive scaling
-            const normalizedValue = Math.pow(value / 100, 1.2); // Less aggressive curve
+            // Smooth the transition between values
+            value = lastIntensity * 0.6 + value * 0.4;
+            lastIntensity = value;
+            
+            const normalizedValue = Math.pow(value / 100, 1.5);
             const controlY = baseControl - (normalizedValue * (baseControl - minControl));
             
-            // Smoother narrowing
             const baseX = 2;
-            const narrowing = Math.min(12, value / 4); // More subtle narrowing
+            const narrowing = Math.min(12, value / 4);
             const startX = baseX + narrowing;
             const endX = 514 - narrowing;
             
-            // Adjust control points for smoother curve
             const leftControl = 138.333 + (narrowing / 2);
             const rightControl = 377.667 - (narrowing / 2);
             
@@ -175,11 +177,11 @@
         function initAudio() {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 512; // Smaller for less delay
-            analyser.minDecibels = -65; // More sensitive
-            analyser.maxDecibels = -20; // Pick up clearer sounds
-            analyser.smoothingTimeConstant = 0.2; // Less smoothing for faster response
-
+            analyser.fftSize = 1024;
+            analyser.minDecibels = -60;
+            analyser.maxDecibels = -20;
+            analyser.smoothingTimeConstant = 0.35;
+            
             const source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
             analyser.connect(audioCtx.destination);
@@ -187,43 +189,44 @@
         }
 
         function detectSpeech(frequencies) {
-            // Focus more precisely on speech frequencies
             const sampleRate = audioCtx.sampleRate;
             const binCount = frequencies.length;
             
-            // Calculate bins for human voice frequencies
-            const voiceStart = Math.floor(85 * binCount / sampleRate);  // 85 Hz
-            const voiceEnd = Math.floor(255 * binCount / sampleRate);   // 255 Hz
+            // Male voice range (typically 85-180 Hz)
+            const voiceStart = Math.floor(85 * binCount / sampleRate);
+            const voiceEnd = Math.floor(180 * binCount / sampleRate);
             
-            // Calculate bins for typical music frequencies
-            const musicLow = Math.floor(60 * binCount / sampleRate);    // 60 Hz
-            const musicHigh = Math.floor(1000 * binCount / sampleRate); // 1000 Hz
+            // Background music typically has broader spectrum
+            const musicLow = Math.floor(20 * binCount / sampleRate);
+            const musicHigh = Math.floor(2000 * binCount / sampleRate);
             
             let voiceSum = 0;
             let musicSum = 0;
-            let voiceCount = 0;
-            let musicCount = 0;
             
-            // Analyze voice range
+            // Calculate average energy in voice range
             for (let i = voiceStart; i < voiceEnd; i++) {
-                voiceSum += frequencies[i];
-                voiceCount++;
+                voiceSum += Math.pow(frequencies[i], 2);
             }
+            const voiceAvg = Math.sqrt(voiceSum / (voiceEnd - voiceStart));
             
-            // Analyze music range
+            // Calculate average energy in music range (excluding voice range)
+            let musicCount = 0;
             for (let i = musicLow; i < musicHigh; i++) {
-                if (i < voiceStart || i > voiceEnd) { // Exclude voice range
-                    musicSum += frequencies[i];
+                if (i < voiceStart || i > voiceEnd) {
+                    musicSum += Math.pow(frequencies[i], 2);
                     musicCount++;
                 }
             }
+            const musicAvg = Math.sqrt(musicSum / musicCount);
             
-            const voiceAvg = voiceSum / voiceCount;
-            const musicAvg = musicSum / musicCount;
+            // Stricter conditions for voice detection
+            const voiceStrength = voiceAvg / musicAvg;
+            const voiceThreshold = 40;
+            const ratioThreshold = 1.8;
             
-            // Only return value if voice is significantly stronger than music
-            if (voiceAvg > musicAvg * 1.2 && voiceAvg > 35) {
-                return voiceAvg;
+            if (voiceStrength > ratioThreshold && voiceAvg > voiceThreshold) {
+                const response = Math.pow((voiceAvg - voiceThreshold) / 50, 1.5) * 100;
+                return Math.min(100, Math.max(0, response));
             }
             return 0;
         }
@@ -234,8 +237,7 @@
             analyser.getByteFrequencyData(dataArray);
             const speechIntensity = detectSpeech(dataArray);
             
-            // More responsive scaling
-            const scaledIntensity = Math.min(100, speechIntensity * 2.5);
+            const scaledIntensity = Math.min(100, speechIntensity * 1.2);
             updateMouthShape(scaledIntensity);
             
             animationFrame = requestAnimationFrame(updateAudioVisualization);
@@ -252,6 +254,7 @@
                 animationFrame = null;
             }
             updateMouthShape(0);
+            lastIntensity = 0;
         }
 
         function toggleMeditation() {
