@@ -192,11 +192,11 @@
             const binCount = frequencies.length;
             
             // Calculate bins for human voice frequencies
-            const voiceStart = Math.floor(85 * binCount / sampleRate);  // 85 Hz
+            const voiceStart = Math.floor(120 * binCount / sampleRate);  // 85 Hz
             const voiceEnd = Math.floor(230 * binCount / sampleRate);   // 255 Hz
             
             // Calculate bins for typical music frequencies
-            const musicLow = Math.floor(60 * binCount / sampleRate);    // 60 Hz
+            const musicLow = Math.floor(100 * binCount / sampleRate);    // 60 Hz
             const musicHigh = Math.floor(1000 * binCount / sampleRate); // 1000 Hz
             
             let voiceSum = 0;
