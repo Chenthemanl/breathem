@@ -3,7 +3,7 @@
 <head>
     <title>Breathem - Art by The Ricci</title>
     <style>
-        /* Previous styles remain the same until frame */
+        /* Core layout styles */
         body {
             display: flex;
             justify-content: center;
@@ -21,7 +21,6 @@
             position: relative;
         }
 
-        /* Modified frame to be clickable */
         .frame {
             width: 100%;
             height: 0;
@@ -32,10 +31,9 @@
             background-color: #FFFFFF;
             animation: normalBreathing 5s ease-in-out infinite;
             transition: background-color 2s ease;
-            cursor: pointer; /* Make it clear the frame is clickable */
+            cursor: pointer; /* Make frame clickable */
         }
 
-        /* Rest of the styles remain the same */
         .content-wrapper {
             position: absolute;
             top: 15.625%;
@@ -44,7 +42,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            pointer-events: none; /* Allow clicks to pass through to frame */
+            pointer-events: none; /* Let clicks pass through to frame */
         }
 
         .eyes-container {
@@ -67,9 +65,55 @@
             cursor: pointer;
         }
 
-        /* Previous styles for mouth, animations, etc. remain the same */
-        [Previous CSS remains unchanged...]
+        .mouth-container {
+            width: 57.27%;
+            height: auto;
+        }
 
+        /* Stress level colors - from white to pink */
+        .stress-level-1 { --stress-color: rgb(255, 250, 250); }
+        .stress-level-2 { --stress-color: rgb(255, 240, 240); }
+        .stress-level-3 { --stress-color: rgb(255, 228, 228); }
+        .stress-level-4 { --stress-color: rgb(255, 216, 216); }
+        .stress-level-5 { --stress-color: rgb(255, 200, 200); }
+        .stress-level-max { --stress-color: rgb(255, 180, 180); }
+
+        /* Breathing animations */
+        @keyframes normalBreathing {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.98); }
+        }
+
+        @keyframes deepBreathing {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(0.975); }
+        }
+
+        /* Blinking animation styles */
+        .blink {
+            height: 2px !important;
+        }
+
+        .slow-blink {
+            transition: height 0.3s;
+        }
+
+        /* Message bubble styling */
+        .speech-bubble {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 2px solid #8F8F8F;
+            border-radius: 15px;
+            padding: 8px 12px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -92,7 +136,7 @@
     <audio id="meditation-audio" src="meditation.mp3"></audio>
 
     <script>
-        // Previous DOM elements and state variables remain the same
+        // DOM elements
         const frame = document.getElementById("breathing-frame");
         const leftEye = document.getElementById("left-eye");
         const rightEye = document.getElementById("right-eye");
@@ -107,20 +151,25 @@
         let stressLevel = 0;
         let maxStressLevel = 5;
 
-        // Enhanced speech recognition setup with increased sensitivity
+        // Trigger words that affect Breathem's stress level
+        const triggerWords = {
+            high: ['unlock', 'biggest'],      // Increases stress by 2
+            medium: ['end-to-end', 'chef'],   // Increases stress by 1
+            low: ['exciting']                 // Increases stress by 0.5
+        };
+
+        // Enhanced speech recognition with better sensitivity
         const initSpeechRecognition = () => {
             if ('webkitSpeechRecognition' in window) {
                 const recognition = new webkitSpeechRecognition();
                 recognition.continuous = true;
                 recognition.interimResults = true;
-                recognition.lang = 'en-US'; // Set language explicitly
-                
-                // Increase recognition sensitivity
+                recognition.lang = 'en-US';
                 recognition.maxAlternatives = 3; // Get multiple interpretations
-                
+
                 recognition.onresult = (event) => {
                     for (let i = event.resultIndex; i < event.results.length; i++) {
-                        // Check all alternatives for trigger words
+                        // Check all alternatives for better word detection
                         for (let j = 0; j < event.results[i].length; j++) {
                             const transcript = event.results[i][j].transcript.toLowerCase();
                             checkForTriggerWords(transcript);
@@ -128,9 +177,8 @@
                     }
                 };
 
-                // Handle recognition end and errors
                 recognition.onend = () => {
-                    recognition.start(); // Immediately restart
+                    recognition.start(); // Keep recognition active
                 };
 
                 recognition.onerror = (event) => {
@@ -144,7 +192,249 @@
             }
         };
 
-        // Modified frame click handler
+        // Check for trigger words in speech
+        const checkForTriggerWords = (transcript) => {
+            triggerWords.high.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(2);
+                }
+            });
+
+            triggerWords.medium.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(1);
+                }
+            });
+
+            triggerWords.low.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(0.5);
+                }
+            });
+        };
+
+        // Increase stress level with smooth transitions
+        const increaseStress = (amount) => {
+            stressLevel = Math.min(maxStressLevel, stressLevel + amount);
+            updateStressVisuals();
+        };
+
+        // Reset stress level and show calming message
+        const resetStress = () => {
+            stressLevel = 0;
+            updateStressVisuals();
+            showMessage("Thanks mate! Feeling much better now!");
+        };
+
+        // Update visual appearance based on stress level
+        const updateStressVisuals = () => {
+            const frame = document.querySelector('.frame');
+            frame.className = 'frame';
+            
+            if (stressLevel > 0) {
+                const level = Math.ceil(stressLevel);
+                frame.classList.add(`stress-level-${level}`);
+                
+                // Apply stress color to background only
+                const stressColor = getComputedStyle(frame).getPropertyValue('--stress-color');
+                frame.style.backgroundColor = stressColor;
+                
+                // Keep features gray
+                frame.style.borderColor = '#8F8F8F';
+                document.querySelectorAll('.eye').forEach(eye => {
+                    eye.style.backgroundColor = '#8F8F8F';
+                });
+                document.querySelector('#mouth-path').style.stroke = '#8F8F8F';
+            } else {
+                // Reset to original colors
+                frame.style.backgroundColor = '#FFFFFF';
+                frame.style.borderColor = '#8F8F8F';
+            }
+        };
+
+        // Display message in speech bubble
+        const showMessage = (text) => {
+            const bubble = document.createElement('div');
+            bubble.className = 'speech-bubble';
+            bubble.textContent = text;
+            
+            frame.appendChild(bubble);
+            
+            setTimeout(() => bubble.style.opacity = '1', 10);
+            setTimeout(() => {
+                bubble.style.opacity = '0';
+                setTimeout(() => bubble.remove(), 300);
+            }, 3000);
+        };
+
+        // Blinking animation system
+        const blinkTypes = {
+            quick: { duration: 200, class: 'blink' },
+            slow: { duration: 300, class: 'blink slow-blink' }
+        };
+
+        const executeBlink = (type) => {
+            return new Promise((resolve) => {
+                const eyes = document.querySelectorAll('.eye');
+                const config = blinkTypes[type];
+                eyes.forEach(eye => eye.classList.add(config.class));
+                setTimeout(() => {
+                    eyes.forEach(eye => eye.classList.remove(config.class));
+                    resolve();
+                }, config.duration);
+            });
+        };
+
+        async function blink() {
+            const types = ['quick', 'quick', 'quick', 'slow'];
+            const selectedType = types[Math.floor(Math.random() * types.length)];
+            await executeBlink(selectedType);
+            
+            const minDelay = 21000;
+            const maxDelay = 29000;
+            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+            setTimeout(blink, nextBlinkDelay);
+        }
+
+        // Audio context setup for meditation
+        let audioCtx = null;
+        let analyser = null;
+        let dataArray = null;
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.minDecibels = -65;
+            analyser.maxDecibels = -20;
+            analyser.smoothingTimeConstant = 0.3;
+            
+            const source = audioCtx.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+
+        // Audio visualization control
+        function startVisualization() {
+            if (!audioCtx) initAudio();
+            updateAudioVisualization();
+        }
+
+        function stopVisualization() {
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+            updateMouthShape(0);
+            lastIntensity = 0;
+        }
+
+        function updateAudioVisualization() {
+            if (!meditationActive) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const speechIntensity = detectSpeech(dataArray);
+            
+            const scaledIntensity = Math.min(100, speechIntensity * 1.8);
+            updateMouthShape(scaledIntensity);
+            
+            animationFrame = requestAnimationFrame(updateAudioVisualization);
+        }
+
+        // Detect speech patterns in audio
+        function detectSpeech(frequencies) {
+            const sampleRate = audioCtx.sampleRate;
+            const binCount = frequencies.length;
+            
+            const voiceStart = Math.floor(80 * binCount / sampleRate);
+            const voiceEnd = Math.floor(260 * binCount / sampleRate);
+            const musicLow = Math.floor(50 * binCount / sampleRate);
+            const musicHigh = Math.floor(1500 * binCount / sampleRate);
+            
+            let voiceSum = 0;
+            let musicSum = 0;
+            
+            for (let i = voiceStart; i < voiceEnd; i++) {
+                voiceSum += frequencies[i];
+            }
+            const voiceAvg = voiceSum / (voiceEnd - voiceStart);
+            
+            let musicCount = 0;
+            for (let i = musicLow; i < musicHigh; i++) {
+                if (i < voiceStart || i > voiceEnd) {
+                    musicSum += frequencies[i];
+                    musicCount++;
+                }
+            }
+            const musicAvg = musicSum / musicCount;
+            
+            const voiceStrength = voiceAvg / musicAvg;
+            const voiceThreshold = 30;
+            const ratioThreshold = 1.2;
+            
+            if (voiceAvg > voiceThreshold && voiceStrength > ratioThreshold) {
+                return Math.min(100, voiceAvg * 1.5);
+            }
+            return 0;
+        }
+
+        // Update mouth animation
+        function updateMouthShape(value = 0) {
+            const baseControl = 47;
+            const minControl = 25;
+            
+            value = lastIntensity * 0.4 + value * 0.6;
+            lastIntensity = value;
+            
+            const normalizedValue = Math.pow(value / 100, 1.2);
+            const controlY = baseControl - (normalizedValue * (baseControl - minControl));
+            
+            const baseX = 2;
+            const narrowing = Math.min(12, value / 4);
+            const startX = baseX + narrowing;
+            const endX = 514 - narrowing;
+            
+            const leftControl = 138.333 + (narrowing / 2);
+            const rightControl = 377.667 - (narrowing / 2);
+            
+            mouthPath.setAttribute("d", 
+                `M${startX} 2C${leftControl} ${controlY} ${rightControl} ${controlY} ${endX} 2`
+            );
+        }
+
+        // Meditation control
+        function toggleMeditation() {
+            if (meditationActive) {
+                audio.pause();
+                audio.currentTime = 0;
+                meditationActive = false;
+                stopVisualization();
+            } else {
+                meditationActive = true;
+                audio.play();
+                startVisualization();
+            }
+        }
+
+        // Breathing pattern control
+        function changeBreathingPattern(animation, duration = 120000) {
+            if (deepBreathingActive) return;
+            deepBreathingActive = true;
+            
+            // Reset and start new animation
+            frame.style.animation = 'none';
+            frame.offsetHeight; // Trigger reflow
+            frame.style.animation = animation;
+
+            // Return to normal breathing after duration
+            setTimeout(() => {
+                frame.style.animation = "normalBreathing 5s ease-in-out infinite";
+                deepBreathingActive = false;
+            }, duration);
+        }
+
+        // Frame click handler - only works when stressed
         frame.addEventListener("click", (event) => {
             // Only allow stress reduction if stressed and not clicking eyes
             if (stressLevel > 0 && !event.target.classList.contains('eye')) {
@@ -152,27 +442,25 @@
             }
         });
 
-        // Modified eye click handlers
+        // Left eye - meditation and stress reset
         leftEye.addEventListener("click", (event) => {
             event.stopPropagation(); // Prevent frame click
-            resetStress(); // Always reset stress
-            toggleMeditation(); // Start meditation
+            resetStress(); // Always reset stress first
+            toggleMeditation(); // Then start meditation
         });
 
+        // Right eye - breathing pattern and stress reset
         rightEye.addEventListener("click", (event) => {
             event.stopPropagation(); // Prevent frame click
-            resetStress(); // Always reset stress
+            resetStress(); // Always reset stress first
             changeBreathingPattern("deepBreathing 8s ease-in-out infinite", 120000);
         });
 
-        [Previous functions remain unchanged: checkForTriggerWords, increaseStress, 
-        updateStressVisuals, showMessage, blinking system, audio system, etc.]
+        // Initialize systems
+        setTimeout(blink, Math.random() * 5000 + 3000); // Start blinking with random delay
+        initSpeechRecognition(); // Start listening for trigger words
 
-        // Initialize only necessary systems
-        setTimeout(blink, Math.random() * 5000 + 3000);
-        initSpeechRecognition();
-
-        // Cleanup
+        // Clean up resources when page is closed
         window.addEventListener('beforeunload', () => {
             if (audioCtx) {
                 audioCtx.close();
