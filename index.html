@@ -133,120 +133,127 @@
         </div>
     </div>
 
-    <audio id="meditation-audio" src="10-Minute Guided Meditation_ Self-Love  SELF (mp3cut.net).mp3"></audio>
+    <audio id="meditation-audio" src="meditation.mp3"></audio>
 
     <script>
-        // DOM elements we'll interact with
+        // DOM elements
         const frame = document.getElementById("breathing-frame");
         const leftEye = document.getElementById("left-eye");
         const rightEye = document.getElementById("right-eye");
+        const audio = document.getElementById("meditation-audio");
         const mouthPath = document.getElementById("mouth-path");
-        const video = document.getElementById("camera-feed");
 
-        // State variables for tracking various aspects of Breathem's behavior
-        let faceDetector = null;
+        // State variables
+        let meditationActive = false;
+        let deepBreathingActive = false;
+        let animationFrame = null;
+        let lastIntensity = 0;
         let stressLevel = 0;
-        let lastIntensity = 0;  // Added for smooth mouth transitions
-        let isBlinking = false;
+        let maxStressLevel = 5;
 
-        // Initialize face detection system
-        async function initializeFaceAPI() {
-            try {
-                await faceapi.nets.faceRecognitionNet.loadFromUri('/models');
-                await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
-                await faceapi.nets.ssdMobilenetv1.loadFromUri('/models');
-                console.log('Face models loaded');
-                initializeCamera();
-            } catch (error) {
-                console.error('Error loading face models:', error);
-            }
-        }
+        // Trigger words that affect Breathem's stress level
+        const triggerWords = {
+            high: ['unlock', 'biggest'],      // Increases stress by 2
+            medium: ['end-to-end', 'chef'],   // Increases stress by 1
+            low: ['exciting']                 // Increases stress by 0.5
+        };
 
-        // Set up camera for face detection
-        async function initializeCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        width: 640,
-                        height: 480,
-                        facingMode: 'user'
-                    } 
-                });
-                
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    startFaceDetection();
-                };
-            } catch (err) {
-                console.error('Error accessing camera:', err);
-            }
-        }
+        // Enhanced speech recognition with better sensitivity
+        const initSpeechRecognition = () => {
+            if ('webkitSpeechRecognition' in window) {
+                const recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+                recognition.maxAlternatives = 3; // Get multiple interpretations
 
-        // Main face detection loop
-        async function startFaceDetection() {
-            setInterval(async () => {
-                if (!video.srcObject) return;
-
-                try {
-                    const detections = await faceapi.detectAllFaces(video)
-                        .withFaceLandmarks()
-                        .withFaceDescriptors();
-
-                    const knownFaces = JSON.parse(localStorage.getItem('knownFaces') || '{}');
-
-                    for (const detection of detections) {
-                        // Try to match with known faces
-                        let matchedPerson = null;
-                        let minDistance = 0.6;
-
-                        for (const [name, data] of Object.entries(knownFaces)) {
-                            const descriptor = new Float32Array(data.descriptor);
-                            const distance = faceapi.euclideanDistance(detection.descriptor, descriptor);
-
-                            if (distance < minDistance) {
-                                matchedPerson = { name, lastGreeting: data.lastGreeting };
-                                minDistance = distance;
-                            }
-                        }
-
-                        if (matchedPerson) {
-                            const now = Date.now();
-                            if (!matchedPerson.lastGreeting || 
-                                now - matchedPerson.lastGreeting > 5 * 60 * 1000) {
-                                greetPerson(matchedPerson.name);
-                                
-                                knownFaces[matchedPerson.name].lastGreeting = now;
-                                localStorage.setItem('knownFaces', JSON.stringify(knownFaces));
-                            }
+                recognition.onresult = (event) => {
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        // Check all alternatives for better word detection
+                        for (let j = 0; j < event.results[i].length; j++) {
+                            const transcript = event.results[i][j].transcript.toLowerCase();
+                            checkForTriggerWords(transcript);
                         }
                     }
-                } catch (error) {
-                    console.error('Error in face detection:', error);
+                };
+
+                recognition.onend = () => {
+                    recognition.start(); // Keep recognition active
+                };
+
+                recognition.onerror = (event) => {
+                    if (event.error !== 'no-speech') {
+                        recognition.stop();
+                        setTimeout(() => recognition.start(), 500);
+                    }
+                };
+
+                recognition.start();
+            }
+        };
+
+        // Check for trigger words in speech
+        const checkForTriggerWords = (transcript) => {
+            triggerWords.high.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(2);
                 }
-            }, 2000);
-        }
+            });
 
-        // Handle greeting recognized people
-        function greetPerson(name) {
-            const messages = [
-                `Hi ${name}! Would you like to meditate with me?`,
-                `Great to see you, ${name}! Shall we practice some mindfulness?`,
-                `Welcome back, ${name}! Ready for some deep breathing?`
-            ];
+            triggerWords.medium.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(1);
+                }
+            });
 
-            const message = messages[Math.floor(Math.random() * messages.length)];
-            showMessage(message);
+            triggerWords.low.forEach(word => {
+                if (transcript.includes(word)) {
+                    increaseStress(0.5);
+                }
+            });
+        };
+
+        // Increase stress level with smooth transitions
+        const increaseStress = (amount) => {
+            stressLevel = Math.min(maxStressLevel, stressLevel + amount);
+            updateStressVisuals();
+        };
+
+        // Reset stress level and show calming message
+        const resetStress = () => {
+            stressLevel = 0;
+            updateStressVisuals();
+            showMessage("Thanks mate! Feeling much better now!");
+        };
+
+        // Update visual appearance based on stress level
+        const updateStressVisuals = () => {
+            const frame = document.querySelector('.frame');
+            frame.className = 'frame';
             
-            // Animate mouth while "speaking"
-            updateMouthShape(50);
-            setTimeout(() => updateMouthShape(0), 2000);
-        }
+            if (stressLevel > 0) {
+                const level = Math.ceil(stressLevel);
+                frame.classList.add(`stress-level-${level}`);
+                
+                // Apply stress color to background only
+                const stressColor = getComputedStyle(frame).getPropertyValue('--stress-color');
+                frame.style.backgroundColor = stressColor;
+                
+                // Keep features gray
+                frame.style.borderColor = '#8F8F8F';
+                document.querySelectorAll('.eye').forEach(eye => {
+                    eye.style.backgroundColor = '#8F8F8F';
+                });
+                document.querySelector('#mouth-path').style.stroke = '#8F8F8F';
+            } else {
+                // Reset to original colors
+                frame.style.backgroundColor = '#FFFFFF';
+                frame.style.borderColor = '#8F8F8F';
+            }
+        };
 
-        // Display messages in speech bubble
-        function showMessage(text) {
-            const existingBubble = document.querySelector('.speech-bubble');
-            if (existingBubble) existingBubble.remove();
-
+        // Display message in speech bubble
+        const showMessage = (text) => {
             const bubble = document.createElement('div');
             bubble.className = 'speech-bubble';
             bubble.textContent = text;
@@ -258,9 +265,121 @@
                 bubble.style.opacity = '0';
                 setTimeout(() => bubble.remove(), 300);
             }, 3000);
+        };
+
+        // Blinking animation system
+        const blinkTypes = {
+            quick: { duration: 200, class: 'blink' },
+            slow: { duration: 300, class: 'blink slow-blink' }
+        };
+
+        const executeBlink = (type) => {
+            return new Promise((resolve) => {
+                const eyes = document.querySelectorAll('.eye');
+                const config = blinkTypes[type];
+                eyes.forEach(eye => eye.classList.add(config.class));
+                setTimeout(() => {
+                    eyes.forEach(eye => eye.classList.remove(config.class));
+                    resolve();
+                }, config.duration);
+            });
+        };
+
+        async function blink() {
+            const types = ['quick', 'quick', 'quick', 'slow'];
+            const selectedType = types[Math.floor(Math.random() * types.length)];
+            await executeBlink(selectedType);
+            
+            const minDelay = 21000;
+            const maxDelay = 29000;
+            const nextBlinkDelay = Math.random() * (maxDelay - minDelay) + minDelay;
+            setTimeout(blink, nextBlinkDelay);
         }
 
-        // Enhanced mouth shape update with smooth transitions
+        // Audio context setup for meditation
+        let audioCtx = null;
+        let analyser = null;
+        let dataArray = null;
+
+        function initAudio() {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.minDecibels = -65;
+            analyser.maxDecibels = -20;
+            analyser.smoothingTimeConstant = 0.3;
+            
+            const source = audioCtx.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+
+        // Audio visualization control
+        function startVisualization() {
+            if (!audioCtx) initAudio();
+            updateAudioVisualization();
+        }
+
+        function stopVisualization() {
+            if (animationFrame) {
+                cancelAnimationFrame(animationFrame);
+                animationFrame = null;
+            }
+            updateMouthShape(0);
+            lastIntensity = 0;
+        }
+
+        function updateAudioVisualization() {
+            if (!meditationActive) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const speechIntensity = detectSpeech(dataArray);
+            
+            const scaledIntensity = Math.min(100, speechIntensity * 1.8);
+            updateMouthShape(scaledIntensity);
+            
+            animationFrame = requestAnimationFrame(updateAudioVisualization);
+        }
+
+        // Detect speech patterns in audio
+        function detectSpeech(frequencies) {
+            const sampleRate = audioCtx.sampleRate;
+            const binCount = frequencies.length;
+            
+            const voiceStart = Math.floor(80 * binCount / sampleRate);
+            const voiceEnd = Math.floor(260 * binCount / sampleRate);
+            const musicLow = Math.floor(50 * binCount / sampleRate);
+            const musicHigh = Math.floor(1500 * binCount / sampleRate);
+            
+            let voiceSum = 0;
+            let musicSum = 0;
+            
+            for (let i = voiceStart; i < voiceEnd; i++) {
+                voiceSum += frequencies[i];
+            }
+            const voiceAvg = voiceSum / (voiceEnd - voiceStart);
+            
+            let musicCount = 0;
+            for (let i = musicLow; i < musicHigh; i++) {
+                if (i < voiceStart || i > voiceEnd) {
+                    musicSum += frequencies[i];
+                    musicCount++;
+                }
+            }
+            const musicAvg = musicSum / musicCount;
+            
+            const voiceStrength = voiceAvg / musicAvg;
+            const voiceThreshold = 30;
+            const ratioThreshold = 1.2;
+            
+            if (voiceAvg > voiceThreshold && voiceStrength > ratioThreshold) {
+                return Math.min(100, voiceAvg * 1.5);
+            }
+            return 0;
+        }
+
+        // Update mouth animation
         function updateMouthShape(value = 0) {
             const baseControl = 47;
             const minControl = 25;
@@ -273,56 +392,86 @@
             const normalizedValue = Math.pow(value / 100, 1.2);
             const controlY = baseControl - (normalizedValue * (baseControl - minControl));
             
+            // Calculate mouth width adjustment
             const baseX = 2;
             const narrowing = Math.min(12, value / 4);
             const startX = baseX + narrowing;
             const endX = 514 - narrowing;
             
+            // Adjust control points for natural curve
             const leftControl = 138.333 + (narrowing / 2);
             const rightControl = 377.667 - (narrowing / 2);
             
-            // Update SVG path with new curve parameters
+            // Apply the new mouth shape
             mouthPath.setAttribute("d", 
                 `M${startX} 2C${leftControl} ${controlY} ${rightControl} ${controlY} ${endX} 2`
             );
         }
 
-        // Blinking animation system
-        async function blink() {
-            if (isBlinking) return;
-            isBlinking = true;
-
-            const eyes = document.querySelectorAll('.eye');
-            eyes.forEach(eye => eye.style.height = '2px');
-            
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
-            eyes.forEach(eye => eye.style.height = '');
-            isBlinking = false;
-
-            // Schedule next blink
-            const nextBlink = Math.random() * 8000 + 2000;
-            setTimeout(blink, nextBlink);
+        // Meditation control
+        function toggleMeditation() {
+            if (meditationActive) {
+                audio.pause();
+                audio.currentTime = 0;
+                meditationActive = false;
+                stopVisualization();
+            } else {
+                meditationActive = true;
+                audio.play();
+                startVisualization();
+            }
         }
 
-        // Initialize face detection and blinking
-        initializeFaceAPI();
-        setTimeout(blink, Math.random() * 5000 + 3000);
+        // Breathing pattern control
+        function changeBreathingPattern(animation, duration = 120000) {
+            if (deepBreathingActive) return;
+            deepBreathingActive = true;
+            
+            // Reset and start new animation
+            frame.style.animation = 'none';
+            frame.offsetHeight; // Trigger reflow
+            frame.style.animation = animation;
 
-        // Event listeners for eye interactions - only show message when reducing stress
+            // Return to normal breathing after duration
+            setTimeout(() => {
+                frame.style.animation = "normalBreathing 5s ease-in-out infinite";
+                deepBreathingActive = false;
+            }, duration);
+        }
+
+        // Frame click handler - only works when stressed
+        frame.addEventListener("click", (event) => {
+            // Only allow stress reduction if stressed and not clicking eyes
+            if (stressLevel > 0 && !event.target.classList.contains('eye')) {
+                resetStress();
+            }
+        });
+
+        // Left eye - meditation and stress reset
         leftEye.addEventListener('click', () => {
-            if (stressLevel > 0) {
+            if (stressLevel > 0) {  // Only show message and reset when stressed
+                stressLevel = 0;
+                frame.className = 'frame';
+                showMessage("Thanks mate! Feeling much better now!");
+            }
+        });
+        
+        rightEye.addEventListener('click', () => {
+            if (stressLevel > 0) {  // Only show message and reset when stressed
                 stressLevel = 0;
                 frame.className = 'frame';
                 showMessage("Thanks mate! Feeling much better now!");
             }
         });
 
-        rightEye.addEventListener('click', () => {
-            if (stressLevel > 0) {
-                stressLevel = 0;
-                frame.className = 'frame';
-                showMessage("Thanks mate! Feeling much better now!");
+        // Initialize systems
+        setTimeout(blink, Math.random() * 5000 + 3000); // Start blinking with random delay
+        initSpeechRecognition(); // Start listening for trigger words
+
+        // Clean up resources when page is closed
+        window.addEventListener('beforeunload', () => {
+            if (audioCtx) {
+                audioCtx.close();
             }
         });
     </script>
