@@ -21,7 +21,7 @@ export const STATE_THEMES = {
     eyeColor: '#FF6B6B',
     mouthColor: '#FF6B6B'
   }
-  // ... other states remain the same
+  // ... other states remain the same 6
 };
 
 export const TRIGGER_PHRASES = {
