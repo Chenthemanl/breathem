@@ -109,19 +109,11 @@ const Happy = () => {
       setShowMessage(true);
     }
 
-    // Log the updated state
     console.log('Updated emotional state:', { 
       newStressLevel: stressLevel, 
       currentState 
     });
   }, [handleEmotionalTrigger, increaseStress, decreaseStress, stressLevel, currentState]);
-
-  // Handle speech recognition errors
-  const handleSpeechError = useCallback((error) => {
-    console.error('Speech recognition error:', error);
-    setMessage("I'm having trouble hearing you...");
-    setShowMessage(true);
-  }, []);
 
   // Hide message after delay
   useEffect(() => {

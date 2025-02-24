@@ -1,0 +1,17 @@
+# backend/requirements.txt
+
+# Core web framework and server
+fastapi==0.109.1          # Modern, fast web framework for building APIs
+uvicorn==0.27.0          # ASGI server implementation for running FastAPI
+python-multipart==0.0.6   # Handles file uploads and form data
+gunicorn==21.2.0         # Production-grade WSGI server
+
+# Face recognition and image processing
+deepface==0.0.93         # Main face recognition library
+opencv-python==4.8.1.78  # Required for image processing
+numpy==1.24.3            # Required for numerical operations
+Pillow==10.0.0          # Python Imaging Library for image handling
+
+# Utilities and middleware
+python-dotenv==1.0.0     # Loads environment variables from .env file
+cors==1.0.1             # Handles Cross-Origin Resource Sharing

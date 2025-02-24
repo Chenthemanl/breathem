@@ -1,0 +1,32 @@
+# backend/render.yaml
+
+services:
+  # Define the web service
+  - type: web
+    name: happy-face-recognition
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
+    
+    # Environment configuration
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: PORT
+        value: 8000
+      - key: ENVIRONMENT
+        value: production
+    
+    # Health check configuration
+    healthCheckPath: /
+    
+    # Resource allocation
+    plan: free
+    
+    # Automatic deployments
+    autoDeploy: true
+    
+    # Build settings
+    buildFilter:
+      paths:
+        - backend/**
