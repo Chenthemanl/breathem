@@ -11,6 +11,7 @@ deepface==0.0.93         # Main face recognition library
 opencv-python==4.8.1.78  # Required for image processing
 numpy==1.24.3            # Required for numerical operations
 Pillow==10.0.0          # Python Imaging Library for image handling
+tf-keras
 
 # Utilities and middleware
 python-dotenv==1.0.0     # Loads environment variables from .env file
