@@ -6,7 +6,7 @@ services:
     name: happy-face-recognition
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
+    startCommand: gunicorn -w 4 -k uvicorn.workers.UvicornWorker server:app
     
     # Environment configuration
     envVars:
