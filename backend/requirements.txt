@@ -9,7 +9,8 @@ gunicorn==21.2.0         # Production-grade WSGI server
 # Face recognition and image processing
 deepface==0.0.93         # Main face recognition library
 opencv-python==4.8.1.78  # Required for image processing
-numpy==1.24.3            # Required for numerical operations
+numpy>=1.23.0,<1.26.0
+pandas>=1.5.3,<2.0.0
 Pillow==10.0.0          # Python Imaging Library for image handling
 tf-keras
 
