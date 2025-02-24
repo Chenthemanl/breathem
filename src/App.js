@@ -1,7 +1,9 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import { ErrorBoundary } from 'react-error-boundary';
 import Happy from './components/Happy/Happy';
+import AdminPanel from './components/Admin/AdminPanel';
 import { HappyProvider } from './context/HappyContext';
 
 const ErrorContainer = styled.div`
@@ -78,19 +80,26 @@ function App() {
   };
 
   return (
-    <ErrorBoundary 
-      FallbackComponent={ErrorFallback}
-      onReset={handleReset}
-      onError={(error, errorInfo) => {
-        console.error('Error caught by boundary:', error, errorInfo);
-      }}
-    >
-      <HappyProvider>
-        <AppContainer>
-          <Happy />
-        </AppContainer>
-      </HappyProvider>
-    </ErrorBoundary>
+    <Router>
+      <ErrorBoundary 
+        FallbackComponent={ErrorFallback}
+        onReset={handleReset}
+        onError={(error, errorInfo) => {
+          console.error('Error caught by boundary:', error, errorInfo);
+        }}
+      >
+        <HappyProvider>
+          <Routes>
+            <Route path="/" element={
+              <AppContainer>
+                <Happy />
+              </AppContainer>
+            } />
+            <Route path="/admin" element={<AdminPanel />} />
+          </Routes>
+        </HappyProvider>
+      </ErrorBoundary>
+    </Router>
   );
 }
 
