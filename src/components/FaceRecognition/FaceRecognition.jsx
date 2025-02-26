@@ -100,20 +100,31 @@ const FaceRecognition = ({ onEmotionDetected }) => {
 
 
   return (
-    <div className="fixed bottom-2 right-2 z-50">
-      {/* Small video preview */}
+    <div 
+      style={{
+        position: 'fixed',
+        bottom: '20px',
+        right: '20px',
+        width: '100px',
+        height: '75px',
+        zIndex: 50,
+        pointerEvents: 'none', // The container won't capture clicks meant for elements behind it
+      }}
+    >
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
-        className="rounded-lg shadow-md"
         style={{
-          width: '100px',  // Small width
-          height: '75px',  // Small height
+          width: '100%',
+          height: '100%',
           objectFit: 'cover',
           transform: 'scaleX(-1)', // Mirror effect for natural self-view
           opacity: 0.7, // Slight transparency
+          borderRadius: '8px',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+          pointerEvents: 'auto', // The video itself can still receive interactions
         }}
       />
     </div>
