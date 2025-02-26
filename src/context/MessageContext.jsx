@@ -1,4 +1,4 @@
-import React, { createContext, useState, useRef, useContext, useCallback, useRef } from 'react';
+import React, { createContext, useState, useRef, useContext, useCallback } from 'react';
 
 // Create the context
 const MessageContext = createContext();
