@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import { ErrorBoundary } from 'react-error-boundary';
 import Happy from './components/Happy/Happy';
@@ -81,7 +81,7 @@ function App() {
   };
 
   return (
-    <Router>
+    <HashRouter>
       <ErrorBoundary 
         FallbackComponent={ErrorFallback}
         onReset={handleReset}
@@ -102,7 +102,7 @@ function App() {
           </MessageProvider>
         </HappyProvider>
       </ErrorBoundary>
-    </Router>
+    </HashRouter>
   );
 }
 
