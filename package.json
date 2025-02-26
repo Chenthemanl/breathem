@@ -2,6 +2,7 @@
   "name": "happy-meditation-app",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://chenthemanl.github.io/breathem",
   "dependencies": {
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
