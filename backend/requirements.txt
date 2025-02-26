@@ -9,6 +9,7 @@ deepface==0.0.93         # Main face recognition library
 opencv-python==4.8.1.78  # Required for image processing
 numpy==1.24.3            # Required for numerical operations
 Pillow==10.0.0          # Python Imaging Library for image handling
+tf-keras==3.5.0
 
 # Encryption
 cryptography==42.0.2     # Library for secure encryption/decryption
