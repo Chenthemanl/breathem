@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import SpeechBubble from './SpeechBubble';
 import { useHappy } from '../../context/HappyContext';
+import { useMessage } from '../../context/MessageContext';
 import { TRIGGER_PHRASES } from '../../utils/constants';
 
 // We keep these basic responses separate from triggers for better user interaction
@@ -58,15 +58,16 @@ const RESPONSES = {
   }
 };
 
-const SpeechHandler = ({ onEmotionalStateChange, currentState, stressLevel }) => {
-  const [message, setMessage] = useState('');
-  const [showMessage, setShowMessage] = useState(false);
+const SpeechHandler = ({ onEmotionalStateChange }) => {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef(null);
   const retryTimeoutRef = useRef(null);
 
   // Get Happy context functions
   const { toggleMeditation, toggleBreathing } = useHappy();
+  
+  // Get the message context for centralized message display
+  const { showMessage } = useMessage();
 
   // Helper function to get a random response from an array
   const getRandomResponse = (responses) => {
@@ -93,8 +94,8 @@ const SpeechHandler = ({ onEmotionalStateChange, currentState, stressLevel }) =>
               maxIntensity = intensity;
               type = triggerType;
               // Set appropriate response based on intensity
-              setMessage(getRandomResponse(RESPONSES.MOOD[category][level]));
-              setShowMessage(true);
+              const messageText = getRandomResponse(RESPONSES.MOOD[category][level]);
+              showMessage(messageText, 2); // Priority 2 for voice responses
               foundResponse = true;
             }
           }
@@ -108,8 +109,8 @@ const SpeechHandler = ({ onEmotionalStateChange, currentState, stressLevel }) =>
               maxIntensity = intensity;
               type = triggerType;
               // Set appropriate response based on intensity
-              setMessage(getRandomResponse(RESPONSES.MOOD[category][level]));
-              setShowMessage(true);
+              const messageText = getRandomResponse(RESPONSES.MOOD[category][level]);
+              showMessage(messageText, 2); // Priority 2 for voice responses
               foundResponse = true;
             }
           }
@@ -120,15 +121,15 @@ const SpeechHandler = ({ onEmotionalStateChange, currentState, stressLevel }) =>
     // Check for meditation-related words
     if (text.includes('meditate') || text.includes('meditation')) {
       toggleMeditation();
-      setMessage(getRandomResponse(RESPONSES.MEDITATION));
-      setShowMessage(true);
+      const messageText = getRandomResponse(RESPONSES.MEDITATION);
+      showMessage(messageText, 3); // Priority 3 for direct commands
       foundResponse = true;
     }
     // Check for breathing-related words
     else if (text.includes('breathe') || text.includes('breathing')) {
       toggleBreathing();
-      setMessage(getRandomResponse(RESPONSES.BREATHING));
-      setShowMessage(true);
+      const messageText = getRandomResponse(RESPONSES.BREATHING);
+      showMessage(messageText, 3); // Priority 3 for direct commands
       foundResponse = true;
     }
     else {
@@ -148,8 +149,7 @@ const SpeechHandler = ({ onEmotionalStateChange, currentState, stressLevel }) =>
 
     // If no triggers were found, give a generic response
     if (!foundResponse) {
-      setMessage("I heard you, but I'm not sure how to help. Try saying 'hello' or 'meditate'!");
-      setShowMessage(true);
+      showMessage("I heard you, but I'm not sure how to help..", 1);
     }
   };
 
@@ -234,19 +234,10 @@ const SpeechHandler = ({ onEmotionalStateChange, currentState, stressLevel }) =>
         }
       }
     };
-  }, [toggleMeditation, toggleBreathing, onEmotionalStateChange]);
+  }, [toggleMeditation, toggleBreathing, onEmotionalStateChange, showMessage]);
 
-  // Handle message display timing
-  useEffect(() => {
-    if (showMessage) {
-      const timer = setTimeout(() => {
-        setShowMessage(false);
-      }, 7000);
-      return () => clearTimeout(timer);
-    }
-  }, [showMessage]);
-
-  return <SpeechBubble message={message} isVisible={showMessage} />;
+  // No need to return anything since we're using the centralized message system
+  return null;
 };
 
 export default SpeechHandler;

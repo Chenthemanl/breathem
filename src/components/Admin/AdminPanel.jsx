@@ -1,53 +1,115 @@
-// src/components/Admin/AdminPanel.jsx
-
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import ReferenceManager from './ReferenceManager';
 
 const AdminPanel = () => {
-  // State to manage active section
+  // State to manage active section - this will be useful when you add more sections later
   const [activeSection, setActiveSection] = useState('references');
 
-  // Navigation items
+  // Navigation items - you can add more sections here in the future
   const navItems = [
     { id: 'references', label: 'Reference Faces' },
-    // Add more sections here as needed
+    // Future sections can be added here, like:
+    // { id: 'settings', label: 'App Settings' },
+    // { id: 'analytics', label: 'User Analytics' },
   ];
 
+  const styles = {
+    container: {
+      minHeight: '100vh',
+      backgroundColor: '#f8fafc',
+      fontFamily: "'Kode Mono', monospace, system-ui, sans-serif"
+    },
+    header: {
+      backgroundColor: '#ffffff',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+      padding: '16px 0'
+    },
+    headerContent: {
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '0 24px',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    },
+    headerTitle: {
+      fontSize: '24px',
+      fontWeight: '600',
+      color: '#333333',
+      margin: 0
+    },
+    backLink: {
+      color: '#8F8F8F',
+      textDecoration: 'none',
+      padding: '8px 16px',
+      borderRadius: '8px',
+      transition: 'all 0.2s ease',
+      border: '1px solid #e5e7eb'
+    },
+    main: {
+      maxWidth: '1200px',
+      margin: '32px auto',
+      padding: '0 24px'
+    },
+    navigation: {
+      backgroundColor: '#ffffff',
+      borderRadius: '8px',
+      overflow: 'hidden',
+      marginBottom: '24px',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+    },
+    navList: {
+      display: 'flex',
+      listStyle: 'none',
+      margin: 0,
+      padding: 0
+    },
+    navItem: {
+      flex: 1
+    },
+    navButton: (isActive) => ({
+      width: '100%',
+      padding: '12px 24px',
+      backgroundColor: isActive ? '#f3f4f6' : 'transparent',
+      border: 'none',
+      borderBottom: isActive ? '2px solid #8F8F8F' : 'none',
+      color: isActive ? '#333333' : '#6b7280',
+      fontWeight: isActive ? '600' : '400',
+      cursor: 'pointer',
+      transition: 'all 0.2s ease',
+      fontSize: '14px'
+    }),
+    footer: {
+      marginTop: '48px',
+      textAlign: 'center',
+      color: '#9ca3af',
+      fontSize: '14px',
+      paddingBottom: '24px'
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div style={styles.container}>
       {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">
-                Happy Admin Panel
-              </h1>
-            </div>
-            <Link
-              to="/"
-              className="text-blue-600 hover:text-blue-800 transition-colors"
-            >
-              Return to Happy
-            </Link>
-          </div>
+      <header style={styles.header}>
+        <div style={styles.headerContent}>
+          <h1 style={styles.headerTitle}>Happy Admin Panel</h1>
+          <Link to="/" style={styles.backLink}>
+            Return to Happy
+          </Link>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main style={styles.main}>
         {/* Navigation */}
-        <nav className="mb-8">
-          <ul className="flex space-x-4 border-b">
+        <nav style={styles.navigation}>
+          <ul style={styles.navList}>
             {navItems.map(item => (
-              <li key={item.id}>
+              <li key={item.id} style={styles.navItem}>
                 <button
-                  className={`px-4 py-2 font-medium text-sm rounded-t-lg ${
-                    activeSection === item.id
-                      ? 'bg-white border-t border-l border-r text-blue-600'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  style={styles.navButton(activeSection === item.id)}
                   onClick={() => setActiveSection(item.id)}
                 >
                   {item.label}
@@ -57,15 +119,18 @@ const AdminPanel = () => {
           </ul>
         </nav>
 
-        {/* Content sections */}
-        <div className="bg-white rounded-lg shadow">
+        {/* Content section */}
+        <div style={styles.contentSection}>
           {activeSection === 'references' && <ReferenceManager />}
-          {/* Add more sections here as needed */}
+          {/* Future sections will be added here, like:
+            {activeSection === 'settings' && <SettingsManager />}
+            {activeSection === 'analytics' && <AnalyticsManager />}
+          */}
         </div>
 
         {/* Footer */}
-        <footer className="mt-8 text-center text-gray-500 text-sm">
-          <p>Happy Admin Panel - Manage reference faces and settings</p>
+        <footer style={styles.footer}>
+          <p>Happy Admin Panel • Version 2.0</p>
         </footer>
       </main>
     </div>

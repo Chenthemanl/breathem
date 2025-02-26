@@ -1,65 +1,121 @@
-// src/config/api.js
+// api.js
+const API_BASE_URL = 'http://localhost:8000';
 
-// Get the API URL from environment variables, fallback to localhost for development
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+/**
+ * Helper function to handle API responses and errors consistently
+ * @param {Response} response - The fetch response object
+ * @returns {Promise} - Resolves with the response data or rejects with an error
+ */
+const handleResponse = async (response) => {
+  const contentType = response.headers.get('content-type');
+  const isJson = contentType && contentType.includes('application/json');
+  const data = isJson ? await response.json() : await response.text();
 
-// Utility function to handle all API requests
-export const fetchFromAPI = async (endpoint, options = {}) => {
-  try {
-    // Construct the full URL by combining the base API URL with the endpoint
-    const url = `${API_URL}${endpoint}`;
-    
-    // Merge default headers with any custom headers
-    const headers = {
-      ...options.headers,
-      'Access-Control-Allow-Origin': '*',
-    };
-
-    // Make the API request
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    // Check if the response was successful
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.statusText}`);
-    }
-
-    // Parse and return the JSON response
-    return await response.json();
-  } catch (error) {
-    console.error('API request error:', error);
-    throw error;
+  if (!response.ok) {
+    // If the server sent an error message, use it, otherwise use the status text
+    const errorMessage = (isJson && data.detail) ? data.detail : response.statusText;
+    throw new Error(`HTTP error! status: ${response.status}, message: ${errorMessage}`);
   }
+
+  return data;
 };
 
-// Convenience functions for common API operations
+/**
+ * API class to handle all server communications
+ */
 export const api = {
-  // List all known faces
-  listKnownFaces: () => 
-    fetchFromAPI('/list-known-faces'),
+  /**
+   * Add a new known face to the system
+   * @param {File} file - The image file containing the face
+   * @param {string} name - The name of the person
+   * @returns {Promise} - Resolves with the server response
+   */
+// In api.js, update the addKnownFace function
 
-  // Add a new reference face
-  addKnownFace: (name, files) => {
-    const formData = new FormData();
-    formData.append('name', name);
-    files.forEach(file => formData.append('files', file));
-
-    return fetchFromAPI('/add-known-face', {
-      method: 'POST',
-      body: formData,
-    });
+async addKnownFace(file, name) {
+    try {
+      if (!file || !name) {
+        throw new Error('Both file and name are required');
+      }
+  
+      // Create and verify form data
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('name', name);
+  
+      // Log the request details
+      console.log('Sending request to add known face:', {
+        name,
+        fileSize: file.size,
+        fileType: file.type
+      });
+  
+      // Make the request with proper headers
+      const response = await fetch(`${API_BASE_URL}/add-known-face`, {
+        method: 'POST',
+        body: formData,
+        // Don't set Content-Type header - browser will set it with boundary
+      });
+  
+      // Log the response status
+      console.log('Server response status:', response.status);
+  
+      // Enhanced error handling
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type');
+        const isJson = contentType && contentType.includes('application/json');
+        
+        let errorMessage;
+        if (isJson) {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || 'Server error';
+        } else {
+          errorMessage = await response.text();
+        }
+        
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorMessage}`);
+      }
+  
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Error in addKnownFace:', error);
+      throw error;
+    }
   },
 
-  // Analyze a face
-  analyzeFace: (file) => {
-    const formData = new FormData();
-    formData.append('file', file);
+  /**
+   * Get a list of all known faces
+   * @returns {Promise<Array>} - Resolves with an array of known face names
+   */
+  async getKnownFaces() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/known-faces`);
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Error getting known faces:', error);
+      throw error;
+    }
+  },
 
-    return fetchFromAPI('/analyze-face', {
-      method: 'POST',
-      body: formData,
-    });
+  /**
+   * Analyze a face image
+   * @param {File} file - The image file to analyze
+   * @returns {Promise} - Resolves with the analysis results
+   */
+  async analyzeFace(file) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch(`${API_BASE_URL}/analyze-face`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      return handleResponse(response);
+    } catch (error) {
+      console.error('Error analyzing face:', error);
+      throw error;
+    }
   }
 };

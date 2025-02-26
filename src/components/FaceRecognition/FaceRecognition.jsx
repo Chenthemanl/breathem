@@ -1,67 +1,121 @@
-import React, { useState, useRef } from 'react';
-import { Camera } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 import useFaceRecognition from '../../hooks/useFaceRecognition';
 
 const FaceRecognition = ({ onEmotionDetected }) => {
-  const [showCamera, setShowCamera] = useState(false);
-  const fileInputRef = useRef(null);
+  // Refs for managing video elements and processing
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const processingIntervalRef = useRef(null);
+  
+  // State to track if we're actively processing
+  const [isActive, setIsActive] = useState(false);
   const { isProcessing, processImage } = useFaceRecognition();
 
-  const handleImageCapture = async (imageData) => {
-    console.log('handleImageCapture called with image data:', imageData.slice(0, 100) + '...');
+  // Function to start the camera
+  const startCamera = async () => {
+    console.log('Starting camera...');
     try {
-      const result = await processImage(imageData);
-      console.log('Processing result:', result);
-      onEmotionDetected && onEmotionDetected(result);
+      // Request access to the webcam
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      });
+
+      // Store the stream and set it as the video source
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        console.log('Camera started successfully');
+        setIsActive(true);
+      }
     } catch (error) {
-      console.error('Error in handleImageCapture:', error);
+      console.error('Failed to start camera:', error);
     }
   };
 
-  const handleFileChange = (event) => {
-    console.log('File selected:', event.target.files);
-    const file = event.target.files[0];
-    if (file) {
-      console.log('Processing file:', file.name, 'type:', file.type);
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        console.log('FileReader loaded file data');
-        handleImageCapture(e.target.result);
-      };
-      reader.onerror = (e) => {
-        console.error('FileReader error:', e);
-      };
-      reader.readAsDataURL(file);
+  // Function to process the current video frame
+  const processCurrentFrame = async () => {
+    if (!videoRef.current || !isActive || isProcessing) return;
+
+    try {
+      // Create a canvas to capture the current frame
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+
+      // Draw the current frame to the canvas
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(videoRef.current, 0, 0);
+
+      // Convert the frame to a data URL
+      const frameData = canvas.toDataURL('image/jpeg');
+      
+      // Process the frame
+      console.log('Processing video frame...');
+      const result = await processImage(frameData);
+      console.log('Frame processing result:', result);
+      
+      // Update Happy's state with the results
+      if (onEmotionDetected) {
+        onEmotionDetected(result);
+      }
+    } catch (error) {
+      console.error('Error processing frame:', error);
     }
   };
+
+  // Set up continuous monitoring when component mounts
+  useEffect(() => {
+    console.log('Setting up face recognition monitoring...');
+    startCamera();
+
+    // Clean up function to stop everything when component unmounts
+    return () => {
+      console.log('Cleaning up face recognition...');
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+      }
+      setIsActive(false);
+    };
+  }, []);
+
+  // Start processing frames once camera is active
+  useEffect(() => {
+    if (isActive) {
+      console.log('Starting continuous frame processing...');
+      processingIntervalRef.current = setInterval(processCurrentFrame, 3000);
+    }
+    return () => {
+      if (processingIntervalRef.current) {
+        clearInterval(processingIntervalRef.current);
+      }
+    };
+  }, [isActive]);
+
 
   return (
-    <div className="absolute top-4 right-4 z-10">
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept="image/*"
-        onChange={handleFileChange}
-      />
-      
-      <button
-        onClick={() => {
-          console.log('Camera button clicked');
-          fileInputRef.current?.click();
+    <div className="fixed bottom-2 right-2 z-50">
+      {/* Small video preview */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="rounded-lg shadow-md"
+        style={{
+          width: '100px',  // Small width
+          height: '75px',  // Small height
+          objectFit: 'cover',
+          transform: 'scaleX(-1)', // Mirror effect for natural self-view
+          opacity: 0.7, // Slight transparency
         }}
-        disabled={isProcessing}
-        className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-        title="Upload photo for emotion detection"
-      >
-        <Camera className="w-6 h-6 text-gray-600" />
-      </button>
-      
-      {isProcessing && (
-        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-white bg-opacity-75 rounded-full">
-          <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
+      />
     </div>
   );
 };

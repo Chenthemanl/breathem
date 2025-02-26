@@ -1,129 +1,162 @@
 import { useState, useCallback } from 'react';
-import { useHappy } from '../context/HappyContext';
 
-const EMOTION_STRESS_LEVELS = {
-  'angry': 3,
-  'disgust': 2,
-  'fear': 2,
-  'sad': 1,
-  'surprise': 0,
-  'happy': -2,
-  'neutral': 0
-};
-
-const EMOTION_RESPONSES = {
-  'angry': [
-    "I can sense you're angry. Let's try to calm down together.",
-    "Take a deep breath. We'll work through this together.",
-    "I understand you're frustrated. Would you like to try some breathing exercises?"
-  ],
-  'disgust': [
-    "I notice you're not feeling great. Let's try to improve your mood.",
-    "Sometimes things can be overwhelming. Want to meditate?",
-    "Let's work on finding some peace together."
-  ],
-  'fear': [
-    "I see you're feeling anxious. I'm here with you.",
-    "It's okay to feel scared. Let's handle this together.",
-    "Would you like to try some calming exercises?"
-  ],
-  'sad': [
-    "I can see you're feeling down. I'm here to support you.",
-    "It's okay to feel sad sometimes. Would you like to meditate?",
-    "Let's work on lifting your spirits together."
-  ],
-  'surprise': [
-    "Oh! You seem surprised! Take a moment to breathe.",
-    "Unexpected things can be startling. Let's center ourselves.",
-    "Take a moment to process. I'm here with you."
-  ],
-  'happy': [
-    "Your smile is contagious! I'm happy to see you cheerful!",
-    "What wonderful positive energy! Let's keep it going!",
-    "Your happiness brightens the room! Let's celebrate with some mindful moments!"
-  ],
-  'neutral': [
-    "How are you feeling today? Would you like to meditate?",
-    "Sometimes a neutral state is perfect for meditation.",
-    "This is a good time for some mindful breathing."
-  ]
-};
-
-const getRandomResponse = (responses) => {
-  const index = Math.floor(Math.random() * responses.length);
-  return responses[index];
-};
-
+/**
+ * Custom hook for handling face recognition and emotion analysis
+ * Provides functionality for processing images and getting emotional responses
+ */
 const useFaceRecognition = () => {
+  // Track the processing state to prevent multiple simultaneous requests
   const [isProcessing, setIsProcessing] = useState(false);
-  const [recognizedPerson, setRecognizedPerson] = useState(null);
-  const [detectedEmotion, setDetectedEmotion] = useState(null);
-  const { setStressLevel } = useHappy();
+  // Track any errors that occur during processing
+  const [error, setError] = useState(null);
 
-  const processImage = useCallback(async (imageData) => {
-    setIsProcessing(true);
+  /**
+   * Converts a data URL to a Blob object
+   * @param {string} dataUrl - The data URL containing the image data
+   * @returns {Blob} A Blob object containing the image data
+   */
+  const dataURLtoBlob = useCallback(async (dataUrl) => {
     try {
-      // Convert base64 to blob
-      const base64Response = await fetch(imageData);
-      const blob = await base64Response.blob();
+      // Extract the base64 data from the data URL
+      const base64Data = dataUrl.split(',')[1];
+      // Convert to blob using fetch API
+      const blob = await fetch(`data:image/jpeg;base64,${base64Data}`).then(res => res.blob());
+      return blob;
+    } catch (error) {
+      console.error('Error converting data URL to blob:', error);
+      throw new Error('Failed to process image format');
+    }
+  }, []);
 
-      // Create form data
+  /**
+   * Gets a friendly response based on the detected emotion
+   * @param {string} emotion - The detected emotion
+   * @returns {string} A friendly response message
+   */
+  const getEmotionResponse = useCallback((emotion) => {
+    const responses = {
+      happy: [
+        "Your smile brightens the room! Shall we maintain this positive energy?",
+        "I love seeing you happy! Would you like to enhance this joy with meditation?",
+        "Your happiness is contagious! Let's channel this positive energy."
+      ],
+      sad: [
+        "I sense some sadness. Would you like to try a gentle meditation?",
+        "Sometimes we all feel down. Let's work through this together.",
+        "I'm here to support you. How about some calming exercises?"
+      ],
+      angry: [
+        "I notice you're frustrated. Let's try some deep breathing exercises.",
+        "Anger is natural, but let's find a way to release it positively.",
+        "I understand you're upset. Would you like to try some stress relief techniques?"
+      ],
+      neutral: [
+        "A calm mind is ready for meditation. Shall we begin?",
+        "Sometimes neutral is perfect. Would you like to explore some mindfulness?",
+        "You seem centered. It's a good time for some breathing exercises."
+      ],
+      surprise: [
+        "Something unexpected caught your attention! Let's center ourselves.",
+        "Surprises can be unsettling. Would you like to find your calm?",
+        "Let's take a moment to process this surprise with some breathing."
+      ],
+      fear: [
+        "I sense some anxiety. Let's work through it together.",
+        "Fear is normal, but we can manage it. How about some grounding exercises?",
+        "You're safe here. Would you like to try some calming techniques?"
+      ],
+      disgust: [
+        "Let's shift to a more comfortable state with some mindfulness.",
+        "Sometimes things bother us. Shall we focus on finding peace?",
+        "I notice your discomfort. How about some clearing exercises?"
+      ]
+    };
+
+    // Get the array of responses for the emotion, or use neutral responses as default
+    const emotionResponses = responses[emotion] || responses.neutral;
+    // Randomly select one response from the array
+    return emotionResponses[Math.floor(Math.random() * emotionResponses.length)];
+  }, []);
+
+  /**
+   * Processes an image for face recognition and emotion analysis
+   * @param {string} imageData - The image data as a base64 string or data URL
+   * @returns {Promise<Object>} The processing results including emotion and person recognition
+   */
+  const processImage = useCallback(async (imageData) => {
+    // Don't process if we're already processing an image
+    if (isProcessing) {
+      console.warn('Face recognition is already in progress');
+      return null;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      console.log('Face Recognition: Sending image to server...');
+      
+      // Convert the image data to a blob
+      const blob = await dataURLtoBlob(imageData);
+      
+      // Prepare the form data for upload
       const formData = new FormData();
-      formData.append('file', blob, 'image.jpg');
+      formData.append('file', blob, 'face.jpg');
 
-      // Send to backend
-      console.log('Sending image to server...');
+      // Send the image to the server for processing
       const response = await fetch('http://localhost:8000/analyze-face', {
         method: 'POST',
-        body: formData,
+        body: formData
       });
-      console.log('Server response status:', response.status);
 
-      const data = await response.json();
-      console.log('DeepFace analysis result:', data);
+      console.log('Face Recognition: Server response status:', response.status);
 
-      if (data.status === 'error') {
-        throw new Error(data.message);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const emotion = data.dominant_emotion;
-      setDetectedEmotion(emotion);
-      setRecognizedPerson(data.person);
-
-      // Update Happy's stress level based on detected emotion
-      const stressImpact = EMOTION_STRESS_LEVELS[emotion] || 0;
-      setStressLevel(prevLevel => {
-        const newLevel = prevLevel + stressImpact;
-        return Math.max(0, Math.min(5, newLevel)); // Keep between 0 and 5
-      });
-
-      // Get base response
-      const baseResponse = getRandomResponse(EMOTION_RESPONSES[emotion] || EMOTION_RESPONSES.neutral);
+      const result = await response.json();
       
-      // Personalize if we know the person
-      const personalizedResponse = data.person && data.person !== 'Unknown' 
-        ? baseResponse.replace("!", `, ${data.person}!`)
-        : baseResponse;
+      // Log the results for debugging
+      console.log('Face Recognition Results');
+      console.log('Detected Emotion:', result.dominant_emotion);
+      console.log('Emotion Scores:', result.emotion_scores);
+      console.log('Recognized Person:', result.person);
+      console.log('Full Response:', result);
 
+      // Generate a response message based on the detected emotion
+      const responseMessage = getEmotionResponse(result.dominant_emotion);
+
+      // Return the processed results in a consistent format
       return {
-        person: data.person,
-        emotion: emotion,
-        response: personalizedResponse,
-        allEmotions: data.emotion_scores
+        success: true,
+        person: result.person,
+        emotion: result.dominant_emotion,
+        allEmotions: result.emotion_scores,
+        response: responseMessage
       };
 
     } catch (error) {
-      console.error('Error processing image:', error);
-      throw error;
+      console.error('Face Recognition Error:', error);
+      setError(error.message);
+      
+      // Return a fallback response when an error occurs
+      return {
+        success: false,
+        person: 'Unknown',
+        emotion: 'neutral',
+        allEmotions: {},
+        response: 'I had trouble reading your emotions. Would you like to try some breathing exercises?'
+      };
     } finally {
       setIsProcessing(false);
     }
-  }, [setStressLevel]);
+  }, [isProcessing, dataURLtoBlob, getEmotionResponse]);
 
+  // Return the hook's interface
   return {
     isProcessing,
-    recognizedPerson,
-    detectedEmotion,
+    error,
     processImage
   };
 };

@@ -16,10 +16,10 @@ export const STATE_THEMES = {
     mouthColor: '#8F8F8F'
   },
   [EMOTIONAL_STATES.ANGRY]: {
-    backgroundColor: '#FFE4E1',
-    borderColor: '#FF6B6B',
-    eyeColor: '#FF6B6B',
-    mouthColor: '#FF6B6B'
+    backgroundColor: '#FFFFFF',
+    borderColor: '#8F8F8F',
+    eyeColor: '#8F8F8F',
+    mouthColor: '#8F8F8F'
   }
   // ... other states remain the same 6
 };
@@ -27,16 +27,18 @@ export const STATE_THEMES = {
 export const TRIGGER_PHRASES = {
   STRESS: {
     HIGH: {
-      WORDS: ['unlock', 'huge', 'biggest', 'terrible', 'idiot', 'hook'],
+      WORDS: ['unlock', 'huge', 'biggest', 'terrible', 'idiot', 'hook', 'killer', 'esl', 'exciting'],
       PHRASES: [
         'beat the chef',
         'end to end',
         'the only',
+        'industry standard',
+        'trojan horse',
         'this is terrible'
       ]
     },
     MEDIUM: {
-      WORDS: ['worried', 'anxiety', 'stress', 'pressure', 'angry', 'mad'],
+      WORDS: ['worried', 'anxiety', 'stress', 'pressure', 'mad'],
       PHRASES: [
         'i am stressed',
         'this is frustrating',
@@ -45,7 +47,7 @@ export const TRIGGER_PHRASES = {
       ]
     },
     LOW: {
-      WORDS: ['busy', 'tired', 'overwhelmed'],
+      WORDS: ['busy', 'tired', 'overwhelmed', 'milan'],
       PHRASES: [
         'i need a break',
         'this is difficult',
