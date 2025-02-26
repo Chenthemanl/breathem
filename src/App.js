@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import styled from 'styled-components';
 import { ErrorBoundary } from 'react-error-boundary';
 import Happy from './components/Happy/Happy';
