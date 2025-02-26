@@ -5,11 +5,10 @@ python-multipart==0.0.6   # Handles file uploads and form data
 gunicorn==21.2.0         # Production-grade WSGI server
 
 # Face recognition and image processing
-deepface==0.0.93         # Main face recognition library
+deepface==0.0.75         # Main face recognition library (older version with fewer dependencies)
 opencv-python==4.8.1.78  # Required for image processing
 numpy==1.24.3            # Required for numerical operations
 Pillow==10.0.0          # Python Imaging Library for image handling
-tf-keras==3.5.0
 
 # Encryption
 cryptography==42.0.2     # Library for secure encryption/decryption
