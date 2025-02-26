@@ -1,13 +1,10 @@
 {
   "files": {
-    "main.css": "/breathem/static/css/main.e6c13ad2.css",
-    "main.js": "/breathem/static/js/main.96f3b928.js",
+    "main.js": "/breathem/static/js/main.f7e699f7.js",
     "index.html": "/breathem/index.html",
-    "main.e6c13ad2.css.map": "/breathem/static/css/main.e6c13ad2.css.map",
-    "main.96f3b928.js.map": "/breathem/static/js/main.96f3b928.js.map"
+    "main.f7e699f7.js.map": "/breathem/static/js/main.f7e699f7.js.map"
   },
   "entrypoints": [
-    "static/css/main.e6c13ad2.css",
-    "static/js/main.96f3b928.js"
+    "static/js/main.f7e699f7.js"
   ]
 }
