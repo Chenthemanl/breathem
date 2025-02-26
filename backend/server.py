@@ -589,7 +589,7 @@ async def read_root() -> Dict[str, str]:
         "status": "ok",
         "message": "Face recognition server is running",
         "version": "1.0.0",
-        "deepface_available": DEEPFACE_AVAILABLE
+        "deepface_available": str(DEEPFACE_AVAILABLE)  # Convert boolean to string
     }
 
 @app.get("/health")
@@ -607,7 +607,7 @@ async def health_check() -> Dict[str, Any]:
             "storage_accessible": True,
             "models_available": FACE_DETECTION_MODELS,
             "encryption_enabled": True,
-            "deepface_available": DEEPFACE_AVAILABLE
+            "deepface_available": str(DEEPFACE_AVAILABLE)  # Convert to string
         }
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
