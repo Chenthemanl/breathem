@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import useFaceRecognition from '../../hooks/useFaceRecognition';
 
 const FaceRecognition = ({ onEmotionDetected }) => {

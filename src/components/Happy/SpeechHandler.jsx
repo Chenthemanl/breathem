@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useHappy } from '../../context/HappyContext';
 import { useMessage } from '../../context/MessageContext';
 import { TRIGGER_PHRASES } from '../../utils/constants';

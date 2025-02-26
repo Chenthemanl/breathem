@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { api } from '../../config/api';
 
 const ReferenceManager = () => {

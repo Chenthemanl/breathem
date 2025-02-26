@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 // Breathing patterns in milliseconds
 const BREATHING_PATTERNS = {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { EMOTIONAL_STATES, STATE_THEMES } from '../utils/constants';
 
 const useEmotionState = () => {

@@ -1,6 +1,6 @@
 // In hooks/useSpeechRecognition.js
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { TRIGGER_PHRASES } from '../utils/constants';
 
 const useSpeechRecognition = (onTriggerDetected) => {
