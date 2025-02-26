@@ -1,5 +1,5 @@
 // api.js
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://happy-face-recognition.onrender.com';
 
 /**
  * Helper function to handle API responses and errors consistently
@@ -30,9 +30,7 @@ export const api = {
    * @param {string} name - The name of the person
    * @returns {Promise} - Resolves with the server response
    */
-// In api.js, update the addKnownFace function
-
-async addKnownFace(file, name) {
+  async addKnownFace(file, name) {
     try {
       if (!file || !name) {
         throw new Error('Both file and name are required');
