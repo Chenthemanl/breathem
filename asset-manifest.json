@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/breathem/static/js/main.f7e699f7.js",
+    "main.js": "/breathem/static/js/main.af904aeb.js",
     "index.html": "/breathem/index.html",
-    "main.f7e699f7.js.map": "/breathem/static/js/main.f7e699f7.js.map"
+    "main.af904aeb.js.map": "/breathem/static/js/main.af904aeb.js.map"
   },
   "entrypoints": [
-    "static/js/main.f7e699f7.js"
+    "static/js/main.af904aeb.js"
   ]
 }
