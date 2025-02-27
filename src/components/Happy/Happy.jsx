@@ -24,7 +24,7 @@ const Container = styled(BaseContainer)`
   
   // Shake animation for angry state with smoother transitions
   ${props => props.$currentState === EMOTIONAL_STATES.ANGRY && css`
-    animation: shake 0.5s cubic-bezier(0.36, 0, 0.66, -0.56) infinite;
+    animation: shake 0.5s cubic-bezier(0.36, 0, 0.66, -0.56) 4;
     
     @keyframes shake {
       0%, 100% { 
