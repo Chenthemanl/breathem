@@ -18,12 +18,12 @@ import {
   ContentWrapper
 } from './styles';
 
-// Enhanced Container component with improved emotion animations and colors
+// Modified Container component with improved emotion animations and colors
 const Container = styled(BaseContainer)`
   transition: all 0.5s ease;
   
-  // Shake animation for angry state with smoother transitions
-  ${props => props.$currentState === EMOTIONAL_STATES.ANGRY && css`
+  // Shake animation for angry state with smoother transitions but limited time
+  ${props => props.$currentState === EMOTIONAL_STATES.ANGRY && props.$isAngerAnimationActive && css`
     animation: shake 0.5s cubic-bezier(0.36, 0, 0.66, -0.56) 4;
     
     @keyframes shake {
@@ -41,6 +41,7 @@ const Container = styled(BaseContainer)`
 
   // Enhanced background color transitions based on stress level
   background-color: ${props => {
+    if (props.$currentState === EMOTIONAL_STATES.ANGRY) return '#FF9494';
     if (props.$stressLevel <= 0) return '#FFFFFF';
     // More granular color transitions for stress levels
     const stressColors = {
@@ -66,11 +67,15 @@ const Happy = () => {
   const [recognizedPerson, setRecognizedPerson] = useState(null);
   const [emotionData, setEmotionData] = useState(null);
   
+  // New state to control the anger animation
+  const [isAngerAnimationActive, setIsAngerAnimationActive] = useState(false);
+  
   // Ref for the Happy container to track its position for speech bubbles
   const happyContainerRef = useRef(null);
   
   // Refs for managing animations
   const emotionProcessingRef = useRef(false);
+  const angerAnimationTimeoutRef = useRef(null);
 
   // Get access to the centralized message system
   const { showMessage } = useMessage();
@@ -96,6 +101,31 @@ const Happy = () => {
     increaseStress,
     decreaseStress
   } = useEmotionState();
+
+  // Monitor changes to the currentState and activate the animation when entering ANGRY state
+  useEffect(() => {
+    // If entering the ANGRY state, activate the animation
+    if (currentState === EMOTIONAL_STATES.ANGRY) {
+      setIsAngerAnimationActive(true);
+      
+      // Clear any existing timeout
+      if (angerAnimationTimeoutRef.current) {
+        clearTimeout(angerAnimationTimeoutRef.current);
+      }
+      
+      // Set a timeout to stop the animation after 2 seconds
+      angerAnimationTimeoutRef.current = setTimeout(() => {
+        setIsAngerAnimationActive(false);
+      }, 2000); // 2 seconds, which matches the animation duration (0.5s × 4)
+    }
+    
+    // Cleanup function
+    return () => {
+      if (angerAnimationTimeoutRef.current) {
+        clearTimeout(angerAnimationTimeoutRef.current);
+      }
+    };
+  }, [currentState]);
 
   // Enhanced emotion state handler with debouncing and validation - For speech input
   const handleEmotionalStateChange = useCallback((type, intensity) => {
@@ -298,6 +328,7 @@ const Happy = () => {
         $isExercising={isExercising}
         $progress={progress}
         $currentState={currentState}
+        $isAngerAnimationActive={isAngerAnimationActive}
       >
         <ContentWrapper>
           <Eyes 
